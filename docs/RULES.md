@@ -126,19 +126,16 @@ Reference: ${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh
 Setting `disable-model-invocation: true` blocks the model from invoking this
 skill at runtime. Verified against Claude Code CLI 2.1.138
 (`contracts/cowork-v1.6608.2.json`): the `skill_invoke` handler returns
-`skill_invoke_model_disabled` when the field is present and true —
+`skill_invoke_model_disabled` when the field is set to true —
 
 ```js
 if (z.disableModelInvocation && !tE7(O, _))
   return skill_invoke_model_disabled
 ```
 
-— so the skill is effectively unusable from the chat surface. Almost
-certainly not what you want for a skill in a public repo.
-
-The historical failure mode (pre-1.6608, the field forced sub-agent dispatch
-with filtered Bash) has shifted, but the field remains a footgun — hence
-severity stays `error`.
+— so the skill is effectively unusable from the chat surface. An internal
+bypass path exists (the `!tE7(O, _)` guard) but is not user-controllable in
+normal use. Almost certainly not what you want for a published skill.
 
 ### Bad
 
