@@ -13,7 +13,7 @@ description: |
   Also fires on the bare `$CLAUDE_PLUGIN_ROOT` form (CW003).
 
   Requires the `claude-cowork-lint` (or `cwlint`) binary on PATH —
-  `pipx install claude-cowork-lint`.
+  `npm i -g claude-cowork-lint`.
 user-invocable: true
 ---
 
@@ -37,7 +37,7 @@ Code/Cowork.
    ```bash
    command -v claude-cowork-lint || command -v cwlint
    ```
-   If neither is found, suggest `pipx install claude-cowork-lint`.
+   If neither is found, suggest `npm i -g claude-cowork-lint` (Node 20+).
 
 2. Run the checker on the current repo:
    ```bash

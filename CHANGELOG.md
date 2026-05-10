@@ -29,8 +29,9 @@ roadmap (v0.1 → v1.0) under one tag.
   the npm tarball (`files` field includes `contracts/`).
 - 11 checker rules (CW001–CW012, with CW007 reserved indefinitely):
   CW001 (runtime-gate tool allowlist), CW002 (no persistence path), CW003
-  (`$CLAUDE_PLUGIN_ROOT` bare), CW004 (disable-model-invocation), CW005 (missing
-  user-invocable), CW006 (typo detector), CW008 (sub-agent + bash heuristic),
+  (`$CLAUDE_PLUGIN_ROOT` bare), CW004 (disable-model-invocation), CW005
+  (explicit `user-invocable: false` opts out — see Unreleased note),
+  CW006 (typo detector), CW008 (sub-agent + bash heuristic),
   CW009 (MCP server registration), CW010 (userConfig validation), CW011
   (plugin hooks won't fire), CW012 (specific broken hook events).
 - CLI subcommands: `check`, `list-rules`, `spec-info`, `extract`. Output

@@ -162,7 +162,7 @@ jobs:
 
 ## Documentation
 
-- [`docs/RULES.md`](docs/RULES.md) — every rule (`CW001`–`CW012`), with examples and fixes
+- [`docs/RULES.md`](docs/RULES.md) — every rule (`CW001`–`CW012`, except `CW007` which is reserved), with examples and fixes
 - [`docs/CLI.md`](docs/CLI.md) — stable CLI/JSON contract for tooling integration
 - [`docs/SPEC-EXTRACTION.md`](docs/SPEC-EXTRACTION.md) — how a new Claude.app bundle becomes a contract file
 - [`docs/internal/ROADMAP.md`](docs/internal/ROADMAP.md) — what shipped in v0.1.0 and what's deferred

@@ -2,6 +2,18 @@
 
 > **Status:** Draft v0. Internal design doc. Not a user-facing README.
 > **Audience:** Implementers and reviewers of this project. Assumes familiarity with Claude.app, Cowork (the product), and Operon (the runtime — see naming notes below).
+>
+> **Implementation status (post-rewrite):** This document was authored
+> Python-first and still contains Python pseudocode (e.g. `from ccrcc import …`),
+> a stale CLI name (`ccrcc check`), and a Python-leaning v0.4 release scope.
+> The shipped implementation is Node-native: the CLI is `claude-cowork-lint` /
+> `cwlint`, the library API is TypeScript (`import { checkRepo, loadDefaultSpec }
+> from "claude-cowork-lint"`), and v0.4 was the Node rewrite, not "language
+> bindings". The runtime-contract model, survivor-set formula, rule semantics,
+> extraction strategy, and schema-lock discipline below are all still
+> authoritative — only the surrounding tooling vocabulary is stale. See
+> [`RETROSPECTIVE.md`](RETROSPECTIVE.md) for the full obsolete-decisions log
+> and [`ROADMAP.md`](ROADMAP.md) for the actual release scopes.
 
 ## Problem
 

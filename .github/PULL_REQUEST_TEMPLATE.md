@@ -9,8 +9,8 @@
 ## Test plan
 
 - [ ] Added a failing test, then made it pass
-- [ ] `uv run pytest` passes locally
-- [ ] `uv run ruff check . && uv run mypy` clean
+- [ ] `npm test` passes locally
+- [ ] `npm run check` (typecheck + lint + tests) is clean
 - [ ] If user-visible behavior changed, added a `CHANGELOG.md` entry
 
 ## Notes for reviewers

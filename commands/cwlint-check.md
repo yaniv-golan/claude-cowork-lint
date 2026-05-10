@@ -19,7 +19,7 @@ contract via the `claude-cowork-lint` CLI.
    If not found, suggest:
 
    ```bash
-   pipx install claude-cowork-lint
+   npm i -g claude-cowork-lint   # Node 20+
    ```
 
 2. Run the checker on the current repo and capture JSON:
