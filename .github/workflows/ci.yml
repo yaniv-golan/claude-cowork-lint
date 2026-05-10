@@ -33,6 +33,8 @@ jobs:
       - run: npx tsc --noEmit -p tsconfig.test.json
       - run: npm run lint
       - run: npm run build
+      - name: Doctor — fail on stale rule anchors
+        run: node dist/cli.js doctor
       - run: npm test
 
   pack-smoke:
