@@ -7,14 +7,16 @@
  * the old 3-name hardcoded allowlist.
  */
 
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { discover } from "../../../src/discovery.js";
 import { CW009 } from "../../../src/rules/index.js";
-import { loadDefaultSpec } from "../../../src/spec.js";
+import { loadDefaultSpec, loadSpec } from "../../../src/spec.js";
 import { makeRepo } from "../../helpers.js";
 
 const spec = loadDefaultSpec();
+const REPO_ROOT = join(__dirname, "..", "..", "..");
 
 describe("CW009", () => {
   it("clean — no MCP tools at all", () => {
@@ -89,6 +91,23 @@ describe("CW009", () => {
     });
     try {
       expect(CW009.check(discover(root), spec)).toHaveLength(0);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("falls back to the legacy 3-name built-in set on pre-1.6608.2 contracts", () => {
+    // Older contracts (e.g. cowork-v2.1.121.json) predate the
+    // `cowork_builtin_mcp_servers` field. The rule must fall back to the
+    // historical 3-name set (workspace, cowork, cowork-onboarding) so that
+    // legitimate built-in references don't get false-positived. Regression
+    // guard for the `?? []` collapse-to-empty bug spotted in B5 review.
+    const oldSpec = loadSpec(join(REPO_ROOT, "contracts", "cowork-v2.1.121.json"));
+    const { root, cleanup } = makeRepo({
+      "agents/x.md": "---\ntools: [mcp__workspace__bash]\n---\nbody",
+    });
+    try {
+      expect(CW009.check(discover(root), oldSpec)).toHaveLength(0);
     } finally {
       cleanup();
     }

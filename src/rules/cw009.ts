@@ -19,9 +19,20 @@ export const CW009: Rule = {
   severity: "info",
   summary: "Agent declares MCP tool whose server may not be registered",
   check(layout, spec) {
+    // Legacy contracts (pre-1.6608.2 — e.g. cowork-v2.1.121.json) didn't
+    // enumerate the auto-registered built-in MCP servers; the implicit
+    // 3-name set below was what the rule recognised before B5 sourced the
+    // full 9-name list from the contract. Falling back to `[]` instead
+    // would turn this rule into a false-positive generator on every older
+    // contract — strictly worse than pre-B5 behaviour.
     const builtins = new Set<string>(
-      spec.host_loop_tool_substitution.cowork_builtin_mcp_servers?.names ?? [],
+      spec.host_loop_tool_substitution.cowork_builtin_mcp_servers?.names ?? [
+        "cowork",
+        "cowork-onboarding",
+        "workspace",
+      ],
     );
+    const builtinList = [...builtins].sort().join(", ");
     const registered = new Set<string>();
     for (const cfg of layout.mcpConfigs) {
       try {
@@ -51,7 +62,6 @@ export const CW009: Rule = {
         if (!server || builtins.has(server) || registered.has(server)) continue;
         const lineNo = findTokenLine(text, tool, fm.bodyStartLine);
         if (isSuppressed(sups, "CW009", lineNo)) continue;
-        const builtinList = [...builtins].sort().join(", ");
         findings.push({
           ruleId: "CW009",
           severity: "info",

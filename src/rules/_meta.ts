@@ -104,6 +104,11 @@ export const RULE_META: Record<string, RuleMeta> = {
     // scheduled-tasks, skills, terminal, workspace). Refreshed in B5 after
     // the v1.6608.2 bundle audit showed the prior 3-name hardcoded list was
     // silently false-positiving the other 6.
+    //
+    // Note: `cowork_builtin_mcp_servers` was introduced in contract
+    // v1.6608.2. On older contracts (e.g. cowork-v2.1.121.json) this anchor
+    // resolves to `undefined` and `doctor` will report CW009 as `stale` —
+    // the rule itself falls back to the legacy 3-name set in cw009.ts.
     contractAnchors: ["host_loop_tool_substitution.cowork_builtin_mcp_servers.names"],
     verifiedAgainst: "1.6608.2",
     status: "stable",
