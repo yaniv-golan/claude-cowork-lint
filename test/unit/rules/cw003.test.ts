@@ -116,4 +116,44 @@ describe("CW003", () => {
       cleanup();
     }
   });
+
+  it("flags multiple bare env vars on the same line", () => {
+    const { root, cleanup } = makeRepo({
+      "SKILL.md":
+        "---\nuser-invocable: true\n---\nRun $CLAUDE_PLUGIN_ROOT/a and $CLAUDE_PLUGIN_DATA/b on the same line.",
+    });
+    try {
+      const findings = CW003.check(discover(root), spec);
+      expect(findings).toHaveLength(2);
+      const messages = findings.map((f) => f.message).join("\n");
+      expect(messages).toContain("CLAUDE_PLUGIN_ROOT");
+      expect(messages).toContain("CLAUDE_PLUGIN_DATA");
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("flags both occurrences when the same env var appears twice on a line", () => {
+    const { root, cleanup } = makeRepo({
+      "SKILL.md": "---\nuser-invocable: true\n---\ncp $CLAUDE_PLUGIN_DATA/a $CLAUDE_PLUGIN_DATA/b",
+    });
+    try {
+      const findings = CW003.check(discover(root), spec);
+      expect(findings).toHaveLength(2);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("respects a same-line suppression marker", () => {
+    const { root, cleanup } = makeRepo({
+      "SKILL.md":
+        '---\nuser-invocable: true\n---\nUse $CLAUDE_PLUGIN_DATA/foo <!-- cwlint: ignore CW003 reason="shell context" -->',
+    });
+    try {
+      expect(CW003.check(discover(root), spec)).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
 });

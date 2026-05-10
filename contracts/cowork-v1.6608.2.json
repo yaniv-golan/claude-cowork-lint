@@ -315,7 +315,7 @@
     "env_var_substitution": {
       "supported_form": "${CLAUDE_PLUGIN_ROOT}",
       "unsupported_form": "$CLAUDE_PLUGIN_ROOT",
-      "reason": "Bare form depends on shell-expansion timing not guaranteed for skill subprocesses. The runtime substitutes the braced form via `H.replace(/\\$\\{CLAUDE_PLUGIN_ROOT\\}/g, () => q(_.path))`; the bare form is left as a literal and only resolves when the executing context happens to perform shell expansion (so it works in `bash -c` argv but silently fails in argv-only invocations). The same pattern applies to `${CLAUDE_PLUGIN_DATA}` (parallel substitution regex) — bare `$CLAUDE_PLUGIN_DATA` has the same silent-failure surface; CW003 currently flags only `$CLAUDE_PLUGIN_ROOT` and is extended in Task B7."
+      "reason": "Bare form depends on shell-expansion timing not guaranteed for skill subprocesses. The runtime substitutes the braced form via `H.replace(/\\$\\{CLAUDE_PLUGIN_ROOT\\}/g, () => q(_.path))`; the bare form is left as a literal and only resolves when the executing context happens to perform shell expansion (so it works in `bash -c` argv but silently fails in argv-only invocations). The same pattern applies to `${CLAUDE_PLUGIN_DATA}` (parallel substitution regex) — bare `$CLAUDE_PLUGIN_DATA` has the same silent-failure surface. CW003 flags bare forms of both env vars."
     },
     "runtime_parser_fields_v2_1_138": {
       "_description": "All skill-frontmatter fields the CLI bundle 2.1.138 normalises and reads at runtime, with the count of occurrences in the bundle. This is distinct from the desktop manifest-display layer (which only reads `name`, `description`, `argument-hint`, `user-invocable`). The contract enumerates both layers explicitly so future audits can spot divergence.",

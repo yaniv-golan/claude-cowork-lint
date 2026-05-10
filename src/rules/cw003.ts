@@ -26,7 +26,7 @@ const ENV_VARS = ["CLAUDE_PLUGIN_ROOT", "CLAUDE_PLUGIN_DATA"] as const;
 // Match `$NAME` not followed by `{` (so we don't false-match the braced
 // form), and not followed by another identifier character (so `$FOO_OTHER`
 // does not match `$FOO`). Capture the env-var name for the message.
-const BARE_RE = new RegExp(`\\$(?!\\{)(${ENV_VARS.join("|")})(?![A-Za-z0-9_])`);
+const BARE_RE = new RegExp(`\\$(?!\\{)(${ENV_VARS.join("|")})(?![A-Za-z0-9_])`, "g");
 
 export const CW003: Rule = {
   ruleId: "CW003",
@@ -40,20 +40,20 @@ export const CW003: Rule = {
       const lines = text.split("\n");
       const sups = parseSuppressions(lines);
       lines.forEach((line, idx) => {
-        const m = BARE_RE.exec(line);
-        if (!m) return;
-        const envVar = m[1] ?? "";
         const lineNo = idx + 1;
-        if (isSuppressed(sups, "CW003", lineNo)) return;
-        findings.push({
-          ruleId: "CW003",
-          severity: "warn",
-          path: rel(layout.root, path),
-          line: lineNo,
-          message: `bare $${envVar} relies on shell expansion; use \${${envVar}} for guaranteed substitution`,
-          detail: target.reason ?? "",
-          suggestion: `Use '\${${envVar}}' instead.`,
-        });
+        for (const m of line.matchAll(BARE_RE)) {
+          const envVar = m[1] ?? "";
+          if (isSuppressed(sups, "CW003", lineNo)) continue;
+          findings.push({
+            ruleId: "CW003",
+            severity: "warn",
+            path: rel(layout.root, path),
+            line: lineNo,
+            message: `bare $${envVar} relies on shell expansion; use \${${envVar}} for guaranteed substitution`,
+            detail: target.reason ?? "",
+            suggestion: `Use '\${${envVar}}' instead.`,
+          });
+        }
       });
     }
     return findings;
