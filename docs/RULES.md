@@ -1,0 +1,291 @@
+# Rule catalog
+
+Every rule cites the section of `docs/internal/SPEC.md` it derives from.
+Suppress any finding inline with `<!-- cwlint: ignore CWxxx reason="..." -->`
+or `# cwlint: ignore CWxxx reason="..."`.
+
+| ID | Severity | Topic |
+|---|---|---|
+| [CW001](#cw001) | error | Tool will not survive Cowork's runtime gates |
+| [CW002](#cw002) | error | Agent has no remaining persistence path |
+| [CW003](#cw003) | warn  | Bare `$CLAUDE_PLUGIN_ROOT` instead of `${...}` |
+| [CW004](#cw004) | error | `disable-model-invocation: true` |
+| [CW005](#cw005) | warn  | Missing `user-invocable: true` |
+| [CW006](#cw006) | warn  | Hook command typos a known tool name |
+| ~~CW007~~ | — | *Reserved; deferred to v0.2* |
+| [CW008](#cw008) | warn  | Sub-agent dispatch + bash fence heuristic |
+| [CW009](#cw009) | info  | MCP tool requires a server not registered locally |
+| [CW010](#cw010) | error | Plugin `userConfig` name violates Operon validation |
+| [CW011](#cw011) | warn  | Plugin has `hooks/hooks.json` |
+| [CW012](#cw012) | info  | Plugin hooks declare events known broken in Cowork |
+
+---
+
+## CW001
+
+**Severity:** error
+**SPEC:** §subagent_tool_filter + §host_loop_tool_substitution
+
+The Cowork runtime applies two filters in series:
+
+1. **Desktop-side host-loop filter** — strips `Bash`, `NotebookEdit`, `REPL`,
+   `JavaScript`, `WebFetch` from registered built-ins. Replacements are
+   registered as MCP tools (`mcp__workspace__bash`, etc.).
+2. **CLI-side async-dispatch allowlist** (`Ys_`/`LW8`) — admits 19 names plus
+   anything matching `mcp__*`. The drop set (`$zH`/`M58`) overrides everything.
+
+The sub-agent survivor set is therefore:
+
+```
+(async_dispatch_allowlist - host_loop_excluded_builtins) - drop_set + {mcp__*}
+```
+
+**v0.1 assumes any agent file under `agents/` is a sub-agent.** Top-level
+Cowork session tools are configured at the desktop/session level, not in skill
+repos.
+
+### Bad
+
+```yaml
+# agents/reviewer.md
+---
+tools: [Bash, Read, TaskOutput]
+---
+```
+
+- `Bash` is in `async_dispatch_allowlist` but ALSO in
+  `host_loop_excluded_builtins` — the desktop strips it. Use
+  `mcp__workspace__bash`.
+- `TaskOutput` is in `drop_set` — always stripped.
+
+### Fix
+
+```yaml
+---
+tools: [mcp__workspace__bash, Read]
+---
+```
+
+---
+
+## CW002
+
+**Severity:** error
+**SPEC:** §subagent_tool_filter (same survivor-set logic as CW001)
+
+If neither `Write` nor `Edit` survives the host-loop and async-dispatch
+filters, the agent has no structured persistence path. (`mcp__workspace__bash`
+can write files via shell, but it isn't a structured persistence tool.)
+
+### Bad
+
+```yaml
+---
+tools: [Read, Grep, TodoWrite]
+---
+```
+
+### Fix
+
+```yaml
+---
+tools: [Read, Grep, TodoWrite, Write]
+---
+```
+
+---
+
+## CW003
+
+**Severity:** warn
+**SPEC:** §skill_frontmatter_invariants.env_var_substitution
+
+Cowork's runtime requires `${CLAUDE_PLUGIN_ROOT}` (with braces). Bare
+`$CLAUDE_PLUGIN_ROOT` depends on shell-expansion timing not guaranteed for
+skill subprocesses.
+
+### Bad
+
+```text
+Reference: $CLAUDE_PLUGIN_ROOT/scripts/setup.sh
+```
+
+### Fix
+
+```text
+Reference: ${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh
+```
+
+---
+
+## CW004
+
+**Severity:** error
+**SPEC:** §skill_frontmatter_invariants.forbidden_fields
+
+Setting `disable-model-invocation: true` forces the skill onto the Cowork
+sub-agent path where Bash is filtered. This is the failure mode that hit the
+v0.4.0 founder-skills incident.
+
+### Bad
+
+```yaml
+---
+user-invocable: true
+disable-model-invocation: true
+---
+```
+
+### Fix
+
+Remove the `disable-model-invocation` line.
+
+---
+
+## CW005
+
+**Severity:** warn
+**SPEC:** §skill_frontmatter_invariants.required_fields
+
+`user-invocable: true` is required for the skill to be discoverable through
+the user-facing slash-command surface.
+
+### Fix
+
+Add `user-invocable: true` to the SKILL.md frontmatter.
+
+---
+
+## CW006
+
+**Severity:** warn
+**SPEC:** §subagent_tool_filter (whole) — typo detector
+
+A hook command references a CamelCase token that *almost* matches a known
+tool name (edit distance ≤ 2). Most likely a typo (`WriteFile` → `Write`).
+
+### Bad
+
+```json
+{ "hooks": { "PreToolUse": [{ "command": "echo WriteFile" }] } }
+```
+
+### Fix
+
+```json
+{ "hooks": { "PreToolUse": [{ "command": "echo Write" }] } }
+```
+
+---
+
+## CW008
+
+**Severity:** warn
+**SPEC:** SPEC §rules-table line `CW008`. v0.4.0 founder-skills incident.
+
+The rule fires when a **structured** sub-agent dispatch cue (`Task(`, `/bg`,
+`/fork`, `subagent_type:`, etc. — see `_DISPATCH_CUES` in the source) is
+followed within 30 lines by a fenced bash block. To suppress when the bash
+block runs on the main thread, add a comment containing `main-thread` (or
+`main thread`) within 3 lines above the fence.
+
+### Bad
+
+```markdown
+Spawn a sub-agent: Task(subagent_type='reviewer')
+
+```bash
+ls
+```
+```
+
+### Fix (option 1)
+
+Replace the bash block with `mcp__workspace__bash`.
+
+### Fix (option 2)
+
+Add a main-thread comment to silence the heuristic:
+
+```markdown
+Spawn: Task(subagent_type='r')
+
+Note: this main-thread block doesn't dispatch.
+```bash
+ls
+```
+```
+
+---
+
+## CW009
+
+**Severity:** info
+**SPEC:** §subagent_tool_filter.mcp_tools + §host_loop_tool_substitution
+
+The agent declares `mcp__<server>__<tool>`, but `<server>` is not registered
+in any `.mcp.json` in the repo and isn't one of the auto-registered Cowork
+built-ins (`workspace`, `cowork`, `cowork-onboarding`).
+
+### Fix
+
+Either register the server in `.mcp.json` or document the dependency in
+SKILL.md.
+
+---
+
+## CW010
+
+**Severity:** error
+**SPEC:** §user_secrets_injection.validation
+
+Plugin `userConfig` option names must satisfy:
+
+- regex `^[A-Za-z][A-Za-z0-9_]*$`
+- length ≤ 128
+- not in the reserved set (`ANTHROPIC_API_KEY`, `DATABASE_URL`, `SECRET_KEY`, etc.)
+
+### Bad
+
+```json
+{ "userConfig": { "1foo": {}, "ANTHROPIC_API_KEY": {} } }
+```
+
+### Fix
+
+```json
+{ "userConfig": { "FOO": {}, "MY_API_KEY": {} } }
+```
+
+---
+
+## CW011
+
+**Severity:** warn
+**SPEC:** §cli_launch_args_in_cowork.consequences.plugin_hooks_excluded
+
+Cowork spawns the in-VM CLI with `--setting-sources=user`. Plugin-scoped
+hooks (declared in `<plugin>/hooks/hooks.json`) **DO NOT FIRE** in Cowork
+sessions. Tracked as
+[#16288](https://github.com/anthropics/claude-code/issues/16288) /
+[#27398](https://github.com/anthropics/claude-code/issues/27398).
+
+### Workaround
+
+Move hook declarations to `~/.claude/settings.json` (user scope) so they
+fire in both Cowork and Claude Code Desktop.
+
+---
+
+## CW012
+
+**Severity:** info
+**SPEC:** SPEC §rules-table line `CW012`
+
+Stronger signal than CW011 — the hook event itself depends on a lifecycle
+that Cowork drops. Events: `SessionStart`, `Stop`, `SubagentStart`,
+`SubagentStop`, `UserPromptSubmit`, `PostToolUse`.
+
+### Workaround
+
+Same as CW011 — move to user scope.
