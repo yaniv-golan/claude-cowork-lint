@@ -75,20 +75,24 @@ The split matters because the synthetic tier guards correctness on every
 PR, while the real-bundle tier guards calibration — the kind of "did
 Claude.app rename a symbol?" drift that synthetic fixtures cannot catch.
 
-## Today (v0.1) — bundled contract + extractor
+## Bundled default — contract + extractor
 
-`contracts/cowork-v2.1.121.json` is the contract file shipped inside the
-npm tarball. It corresponds to:
+`contracts/cowork-v1.6608.2.json` is the contract file shipped as the
+default inside the npm tarball, loaded via the `cowork-latest.json`
+pointer. It corresponds to:
 
-- Claude.app `1.6259.1` (`Contents/Resources/app.asar`)
-- Operon-Core `2.1.121`
+- Claude.app `1.6608.2` (`Contents/Resources/app.asar`)
 - In-VM CLI `2.1.138` (Bun SEA binary)
 
-It was originally hand-curated and is now reproducible end-to-end via the
-extractor against the same bundle. Each top-level field cites the desktop
-or CLI symbol it derives from (`MGn`, `Ys_`, `LW8`, `jie`, `Y2e`, `xUA`,
-…) for human review; the symbol names are *documentation*, not the
-extraction key.
+The earlier `contracts/cowork-v2.1.121.json` (matched to Claude.app
+`1.6259.1`) remains in `contracts/` as a historical reference. See
+[`internal/CONTRACT-AUDIT-1.6608.2.md`](internal/CONTRACT-AUDIT-1.6608.2.md)
+for the audit that landed the refresh.
+
+The contract is reproducible end-to-end via the extractor against the
+same bundle. Each top-level field cites the desktop or CLI symbol it
+derives from (`MGn`, `Ys_`, `LW8`, `jie`, `Y2e`, `xUA`, …) for human
+review; the symbol names are *documentation*, not the extraction key.
 
 ### Curating a new version manually
 

@@ -96,7 +96,7 @@ Library API section below.
 {
   "cwlint_version": "0.1.0",
   "spec_version": "0",
-  "claude_app_version": "1.6259.1",
+  "claude_app_version": "1.6608.2",
   "findings": [
     {
       "rule_id": "CW001",
