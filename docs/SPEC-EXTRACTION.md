@@ -120,6 +120,92 @@ run daily and on `workflow_dispatch`:
 A dry-run mode exists for CI smoke-testing without touching real Claude.app
 data.
 
+## Contract-refresh policy
+
+A contract refresh is the end-to-end workflow that takes a new Claude.app
+version from "watcher detected drift" to "shipped bundled contract." The
+mechanism has four moving parts: the watcher (drift detection), the
+extractor pipeline (candidate generation), `cwlint doctor` (rule-level
+staleness audit against the candidate), and the release lane (which
+release tier the refresh ships in).
+
+### 1. Watcher produces a candidate contract
+
+The cron watcher (above) auto-detects new Claude.app versions and writes
+`contracts/cowork-v<NEW>.json` plus `diff.md` to its output dir. The
+candidate is an overlay of the bundled contract with whatever fragments
+the extractor newly produced — never a from-scratch rebuild — so
+unchanged fields carry forward verbatim. The watcher never auto-merges:
+extractor self-tests are necessary but not sufficient evidence of
+correctness, and a contract bump can quietly invalidate a rule's anchor
+without breaking the extractor.
+
+### 2. Maintainer runs `cwlint doctor` against the candidate
+
+Every rule declares the dotted contract paths it reads via
+`RULE_META.contractAnchors` in `src/rules/_meta.ts`. `cwlint doctor
+--spec contracts/cowork-v<NEW>.json` resolves each declared anchor
+against the candidate and reports any rule whose paths no longer
+resolve. The per-rule `overall` field is one of:
+
+- `ok` — every anchor still resolves; the rule survives the bump untouched.
+- `stale` — at least one anchor missing; needs maintainer action.
+- `deprecated` — rule is marked `status: "deprecated"` in `RULE_META`
+  and is reported as deprecated regardless of anchor resolution. This is
+  the lane for rules whose runtime enforcement has been removed (e.g.
+  CW010 after the Operon kernel-secrets subsystem was deleted) but
+  which we keep callable as hygiene checks.
+
+### 3. Stale anchors → re-anchor or deprecate
+
+A `stale` result is a fork:
+
+- **Re-anchor.** The runtime gate still exists, but the contract field
+  moved or the extractor regressed. Update the relevant extractor in
+  `src/extractors/` and the rule's `contractAnchors` list in lockstep.
+  CW004 in the v1.6608.2 refresh is the canonical example: the
+  `disable-model-invocation` field appears in the CLI bundle (the
+  authoritative runtime parser) but not in the desktop bundle's
+  `dh(r, ...)` manifest-display accessor. The desktop layer is a
+  *display* surface only; the CLI bundle is the gate. Some rules
+  legitimately anchor in one bundle and not the other — `RULE_META`
+  documents which per rule.
+- **Deprecate.** The gate is genuinely gone (e.g. CW010's `OperonSecrets`
+  validation in v1.6608.2). Flip `status: "stable"` → `"deprecated"` in
+  `RULE_META`. The rule stays callable so users running the new checker
+  against old bundles still get a result, but `doctor` reports it as
+  deprecated.
+
+### 4. Release lane (semver semantics)
+
+- **Patch** (`x.y.Z`) bumps the bundled contract only. No rule logic
+  changes; no schema changes. Used for routine refresh when every rule
+  reports `ok`.
+- **Minor** (`x.Y.0`) bumps the contract *and* re-calibrates one or more
+  rules — re-anchoring, deprecating, or adding a new CW0xx ID for newly
+  discovered gates. Same `spec_version`.
+- **Major** (`X.0.0`) changes the JSON schema (`spec_version` bumps
+  past `"0"`). This deletes `test/unit/schema-lock.test.ts` in the same
+  PR (see "Schema lock" below).
+
+### 5. Old contracts stay in `contracts/`
+
+The previous contract file (e.g. `cowork-v2.1.121.json`) is **never
+deleted within a major version**. Maintainers may need to load an older
+contract for historical diffs, for `cwlint doctor` runs to inspect rule
+drift across releases, or for users still pinned to an older
+`claude_app_version`. Removal is reserved for major (`spec_version`)
+bumps that change the JSON shape such that older files would no longer
+load.
+
+### Exemplar refresh report
+
+`docs/internal/CONTRACT-AUDIT-1.6608.2.md` is the audit report for the
+v1.6259.1 → v1.6608.2 refresh that exercised this policy end-to-end. It
+demonstrates the expected level of evidence per rule (anchor probes,
+occurrence counts, desktop-vs-CLI bundle attribution) and is the
+template for future refreshes.
+
 ## Schema lock
 
 `spec_version: "0"` is the locked JSON-shape contract. New runtime contract
