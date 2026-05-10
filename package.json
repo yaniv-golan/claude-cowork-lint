@@ -1,7 +1,7 @@
 {
   "name": "claude-cowork-lint",
   "version": "0.1.0",
-  "description": "Validate skill/plugin/agent repos against the Claude Cowork runtime contract (Node.js port).",
+  "description": "Validate Claude skill/plugin/agent repos against the Cowork runtime contract.",
   "keywords": [
     "claude",
     "claude-cowork",
@@ -9,7 +9,8 @@
     "skill",
     "plugin",
     "linter",
-    "contract"
+    "contract",
+    "static-analysis"
   ],
   "homepage": "https://github.com/yaniv-golan/claude-cowork-lint#readme",
   "bugs": "https://github.com/yaniv-golan/claude-cowork-lint/issues",
@@ -17,7 +18,7 @@
     "type": "git",
     "url": "git+https://github.com/yaniv-golan/claude-cowork-lint.git"
   },
-  "author": "Yaniv Golan",
+  "author": "Yaniv Golan <yaniv@lool.vc>",
   "license": "MIT",
   "type": "module",
   "engines": {
@@ -31,23 +32,65 @@
       "types": "./dist/index.d.ts"
     }
   },
+  "bin": {
+    "claude-cowork-lint": "./dist/cli.js",
+    "cwlint": "./dist/cli.js"
+  },
   "files": [
     "dist",
     "contracts",
+    "schemas",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node -e \"require('fs').chmodSync('dist/cli.js', 0o755)\"",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --test-reporter=spec dist/**/*.test.js",
-    "prepublishOnly": "npm run build && npm test"
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "check": "npm run typecheck && npm run lint && npm test",
+    "coverage": "vitest run --coverage",
+    "prepare": "simple-git-hooks",
+    "prepublishOnly": "npm run check && npm run build",
+    "changeset": "changeset",
+    "release": "changeset publish"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
+  },
+  "simple-git-hooks": {
+    "pre-commit": "npx --no -- biome check --staged --no-errors-on-unmatched"
+  },
+  "dependencies": {
+    "@babel/parser": "^7.26.0",
+    "@babel/traverse": "^7.26.0",
+    "@babel/types": "^7.26.0",
+    "@electron/asar": "^3.4.0",
+    "commander": "^12.1.0",
+    "picocolors": "^1.1.1",
+    "plist": "^3.1.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/node": "^25.6.2",
-    "typescript": "^6.0.3"
+    "@biomejs/biome": "^2.4.14",
+    "@changesets/changelog-github": "^0.6.0",
+    "@changesets/cli": "^2.27.0",
+    "@types/babel__traverse": "^7.20.6",
+    "@types/node": "^22.0.0",
+    "@types/plist": "^3.0.5",
+    "@vitest/coverage-v8": "^4.1.5",
+    "ajv": "^8.17.0",
+    "ajv-formats": "^3.0.1",
+    "simple-git-hooks": "^2.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
   }
 }
