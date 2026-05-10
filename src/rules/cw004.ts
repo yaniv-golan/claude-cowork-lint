@@ -1,3 +1,9 @@
+/**
+ * CW004 — SKILL.md frontmatter sets a forbidden field.
+ *
+ * Compares each frontmatter key/value against spec.skill_frontmatter_invariants
+ * .forbidden_fields. Currently flags `disable-model-invocation: true`.
+ */
 import { readFileSync } from "node:fs";
 import type { Finding } from "../findings.js";
 import { parseFrontmatter } from "../frontmatter.js";

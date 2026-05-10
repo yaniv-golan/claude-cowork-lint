@@ -1,3 +1,9 @@
+/**
+ * CW011 — plugin has hooks/hooks.json (won't fire in Cowork).
+ *
+ * Cowork's host-loop CLI launches with --setting-sources=user, which silently
+ * excludes plugin-scoped hooks. Reports one finding per hook file present.
+ */
 import { readFileSync } from "node:fs";
 import type { Finding } from "../findings.js";
 import { isSuppressed, parseSuppressions } from "../suppression.js";

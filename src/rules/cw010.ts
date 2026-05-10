@@ -1,3 +1,9 @@
+/**
+ * CW010 — plugin userConfig option name violates user-secret validation rules.
+ *
+ * Each option name must match the spec's name_regex, fit within name_max_length,
+ * and not collide with the reserved-name list (e.g. ANTHROPIC_API_KEY).
+ */
 import { readFileSync } from "node:fs";
 import type { Finding } from "../findings.js";
 import { isSuppressed, parseSuppressions } from "../suppression.js";

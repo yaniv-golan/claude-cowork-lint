@@ -1,3 +1,12 @@
+/**
+ * CW006 — hook command references a tool name not in any allowlist (typo
+ * detector).
+ *
+ * Walks every string inside hooks.json / settings.json payloads, picks out
+ * CamelCase tokens that look like tool names, and emits warnings for tokens
+ * that don't exist in any spec allowlist but have a close match (LCS-based
+ * similarity ≥ 0.7) to a real tool name.
+ */
 import { readFileSync } from "node:fs";
 import type { Finding } from "../findings.js";
 import type { Spec } from "../spec.js";
@@ -25,10 +34,7 @@ export const CW006: Rule = {
       const lines = text.split("\n");
       const sups = parseSuppressions(lines);
       walkStrings(payload, (s) => {
-        const m = TOOL_TOKEN.exec(s);
-        TOOL_TOKEN.lastIndex = 0;
-        if (!m) return;
-        for (const match of s.matchAll(/\b([A-Z][a-zA-Z]{1,39})\b/g)) {
+        for (const match of s.matchAll(TOOL_TOKEN)) {
           const candidate = match[1] ?? "";
           if (!candidate || known.has(candidate)) continue;
           const suggestion = closestMatch(candidate, known);
@@ -36,6 +42,12 @@ export const CW006: Rule = {
           const key = `${path}:${candidate}`;
           if (seen.has(key)) continue;
           seen.add(key);
+          // TODO(parity): the legacy Python (cw006_unknown_tool_name.py) computed lineNo
+          //   once per enclosing JSON string, not per candidate. The current per-candidate
+          //   scan can attribute findings to an earlier unrelated occurrence of the same
+          //   token (e.g. inside a docstring). Revisit when adding the snapshot test
+          //   (Task E2) — a fixture pinning the expected line number will catch any
+          //   future drift in either direction.
           let lineNo = 1;
           for (let i = 0; i < lines.length; i++) {
             if ((lines[i] ?? "").includes(candidate)) {

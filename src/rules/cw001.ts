@@ -1,3 +1,10 @@
+/**
+ * CW001 — agent declares a tool stripped by Cowork's runtime gates.
+ *
+ * Reads agents/*.md frontmatter; cross-checks each declared tool against the
+ * spec's drop_set, host_loop_excluded_builtins, and async_dispatch_allowlist
+ * to determine whether the tool will actually reach the sub-agent.
+ */
 import { readFileSync } from "node:fs";
 import type { Finding } from "../findings.js";
 import { findTokenLine, parseFrontmatter } from "../frontmatter.js";

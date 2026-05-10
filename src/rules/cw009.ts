@@ -1,3 +1,10 @@
+/**
+ * CW009 — agent declares an MCP tool whose server isn't registered.
+ *
+ * Checks each `mcp__<server>__<tool>` entry against the union of (a) the
+ * `mcpServers` keys in any .mcp.json found in the repo, and (b) Cowork's
+ * built-in MCP namespaces (workspace, cowork, cowork-onboarding).
+ */
 import { readFileSync } from "node:fs";
 import type { Finding } from "../findings.js";
 import { findTokenLine, parseFrontmatter } from "../frontmatter.js";

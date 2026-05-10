@@ -1,3 +1,10 @@
+/**
+ * CW012 — plugin hooks declare events known broken in Cowork.
+ *
+ * Stronger signal than CW011 — flags specific event names (Stop, SessionStart,
+ * SubagentStop, UserPromptSubmit, PostToolUse, SubagentStart) that the Cowork
+ * runtime does not deliver to plugin-scoped handlers.
+ */
 import { readFileSync } from "node:fs";
 import type { Finding } from "../findings.js";
 import { isSuppressed, parseSuppressions } from "../suppression.js";

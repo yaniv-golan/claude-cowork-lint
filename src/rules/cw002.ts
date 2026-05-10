@@ -1,3 +1,9 @@
+/**
+ * CW002 — agent has neither Write nor Edit after the runtime gates apply.
+ *
+ * Computes the same survivor set as CW001; flags agents whose surviving tool
+ * set lacks any persistence primitive.
+ */
 import { readFileSync } from "node:fs";
 import type { Finding } from "../findings.js";
 import { findTokenLine, parseFrontmatter } from "../frontmatter.js";

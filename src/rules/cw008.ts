@@ -1,3 +1,10 @@
+/**
+ * CW008 — sub-agent dispatch cue followed by a fenced bash block.
+ *
+ * Heuristic: when an SKILL.md contains a structured dispatch cue (`Task(`,
+ * `/bg`, `subagent_type:`, etc.) and a ```bash fence within 30 lines, warn
+ * unless the user marked the block as main-thread within 3 lines above.
+ */
 import { readFileSync } from "node:fs";
 import type { Finding } from "../findings.js";
 import { isSuppressed, parseSuppressions } from "../suppression.js";

@@ -1,3 +1,9 @@
+/**
+ * CW005 — SKILL.md missing required frontmatter field.
+ *
+ * Treats both an absent field and one explicitly set to false as triggers.
+ * Currently checks `user-invocable`.
+ */
 import { readFileSync } from "node:fs";
 import type { Finding } from "../findings.js";
 import { parseFrontmatter } from "../frontmatter.js";

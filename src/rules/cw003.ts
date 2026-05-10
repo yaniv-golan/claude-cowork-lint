@@ -1,3 +1,9 @@
+/**
+ * CW003 — SKILL.md uses bare $CLAUDE_PLUGIN_ROOT instead of ${CLAUDE_PLUGIN_ROOT}.
+ *
+ * The bare form depends on shell-expansion timing not guaranteed for skill
+ * subprocesses; the wrapped form is the spec-supported one.
+ */
 import { readFileSync } from "node:fs";
 import type { Finding } from "../findings.js";
 import { isSuppressed, parseSuppressions } from "../suppression.js";
