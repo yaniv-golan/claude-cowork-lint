@@ -223,16 +223,24 @@ function bailWithError(
 
 /**
  * Wrap `loadSpec()` so a missing file, malformed JSON, or wrong
- * `spec_version` all surface as a single `E_SPEC_INVALID` envelope rather
- * than an uncaught throw. Returns the loaded Spec on success; bails the
- * process on failure.
+ * `spec_version` all surface as a structured envelope rather than an
+ * uncaught throw. Returns the loaded Spec on success; bails the process on
+ * failure.
+ *
+ * Error classification mirrors the docs:
+ *  - missing file → `E_PATH_NOT_FOUND` ("the path you pointed at doesn't exist")
+ *  - malformed JSON / wrong `spec_version` → `E_SPEC_INVALID`
+ *    ("the file exists but is malformed or wrong version")
+ *
+ * Both share exit code `3` (controlled error); the discriminator is the
+ * `code` field on the envelope.
  */
 function loadSpecOrBail(specPath: string, fmt: "text" | "json" | "sarif"): Spec {
   if (!existsSync(specPath)) {
     bailWithError(
       {
         ok: false,
-        code: "E_SPEC_INVALID",
+        code: "E_PATH_NOT_FOUND",
         message: `spec file not found: ${specPath}`,
         hint: "Pass --spec <path-to-cowork-v*.json> or omit --spec to use the bundled contract.",
       },
@@ -575,17 +583,56 @@ Examples:
   });
 
 /**
+ * Best-effort scan of raw argv to determine the user's intended output
+ * format. Used by `handleCommanderError`: Commander's exit-override hook
+ * fires BEFORE any subcommand action body has resolved `--json` / `--format`
+ * via `resolveFormat`, so the structured envelope would otherwise be routed
+ * as text (stderr) even when the user explicitly passed `--json`.
+ *
+ * Precedence rules at this stage are intentionally simpler than the
+ * action-body resolver: we're already past parse failure, so the goal is
+ * "best-effort route to the stream the user asked for", not full fidelity.
+ * If `--json` appears anywhere in argv, JSON wins; otherwise `--format
+ * <fmt>` (and its `--format=<fmt>` syntax) is consulted. Unknown format
+ * tokens fall back to text — the action-body validator would catch them
+ * anyway, but we never get that far here.
+ */
+function detectFormatFromArgv(argv: readonly string[]): "text" | "json" | "sarif" {
+  if (argv.includes("--json")) return "json";
+  // --format <fmt>
+  const fi = argv.indexOf("--format");
+  if (fi !== -1) {
+    const next = argv[fi + 1];
+    if (next === "json" || next === "sarif" || next === "text") return next;
+  }
+  // --format=<fmt>
+  for (const a of argv) {
+    if (a.startsWith("--format=")) {
+      const v = a.slice("--format=".length);
+      if (v === "json" || v === "sarif" || v === "text") return v;
+    }
+  }
+  return "text";
+}
+
+/**
  * Map a `CommanderError` onto an `ErrorEnvelope` + exit code. Commander's
  * --help / --version paths are flagged as zero-exit successes; everything
  * else (`commander.unknownCommand`, `commander.missingArgument`,
  * `commander.unknownOption`, `commander.invalidArgument`, …) collapses to
  * `E_USAGE` with exit 64.
+ *
+ * Because this fires before any subcommand action runs, the effective
+ * `--format` is recovered via `detectFormatFromArgv` (best-effort argv
+ * pre-scan) so `cwlint check --bad-flag --json` still routes the envelope
+ * to stdout as JSON — matching the documented routing rule.
  */
 function handleCommanderError(err: CommanderError): never {
   // --help and --version are not failures.
   if (err.code === "commander.helpDisplayed" || err.code === "commander.version") {
     process.exit(0);
   }
+  const fmt = detectFormatFromArgv(process.argv);
   // Commander has already written its own help/usage hint to stderr;
   // emit the structured envelope on top so JSON consumers (or anyone
   // parsing stderr by code) get a discriminator.
@@ -595,7 +642,7 @@ function handleCommanderError(err: CommanderError): never {
       code: "E_USAGE",
       message: err.message,
     },
-    "text",
+    fmt,
     64,
   );
 }

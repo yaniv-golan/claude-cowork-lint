@@ -154,7 +154,7 @@ Flags:
 | Flag | Behaviour |
 |---|---|
 | `--strict` | Exit `1` on any error-severity finding (default: warn-only, exit `0`). |
-| `--spec <path>` | Override the bundled contract. Missing file / malformed JSON / wrong `spec_version` → `E_SPEC_INVALID`, exit `3`. |
+| `--spec <path>` | Override the bundled contract. Missing file → `E_PATH_NOT_FOUND`, exit `3`. Malformed JSON / wrong `spec_version` → `E_SPEC_INVALID`, exit `3`. |
 | `--ignore <ruleId>` | Skip a rule (repeatable). |
 | `--quiet` | Suppress the human-readable "✓ no findings" success line. No-op under `--format json`. |
 | `--no-color` | Suppress ANSI color (also honored: `NO_COLOR=<anything>`, `CI=<anything>`). |
@@ -185,6 +185,16 @@ contract. The payload is **flat** — do NOT expect a nested `report` key.
 Exit codes: `0` when every rule is `ok`/`deprecated`; `1` when at least
 one rule is `stale` (analogous to `--strict` — operator opted into a
 gate). `deprecated` is intentional/known and does NOT trip CI.
+
+Flags:
+
+| Flag | Behaviour |
+|---|---|
+| `--json` | Shorthand for `--format json` (overridden if `--format` is also passed). |
+| `-f, --format <fmt>` | Output format: `text` (default) or `json`. |
+| `--spec <path>` | Override the bundled contract. Missing file → `E_PATH_NOT_FOUND`, exit `3`. Malformed JSON / wrong `spec_version` → `E_SPEC_INVALID`, exit `3`. |
+| `--quiet` | Suppress per-rule output when every rule is `ok`/`deprecated`. Stale rules always print (so CI logs preserve the gate signal). No-op under `--format json`. |
+| `--no-color` | Suppress ANSI color (also honored: `NO_COLOR=<anything>`, `CI=<anything>`). |
 
 ### `cwlint list-rules` (`--json`)
 
@@ -242,8 +252,8 @@ stderr is the only error surface).
 
 | Code | Meaning | Exit | Where |
 |---|---|---|---|
-| `E_PATH_NOT_FOUND` | Positional path argument doesn't exist on disk. | `3` | `check <repo>`, `extract <bundle>` |
-| `E_SPEC_INVALID` | `--spec <path>` is missing, malformed, or has wrong `spec_version`. | `3` | wherever `--spec` is accepted |
+| `E_PATH_NOT_FOUND` | A path argument doesn't exist on disk. | `3` | `check <repo>`, `extract <bundle>`, `--spec <path>` |
+| `E_SPEC_INVALID` | `--spec <path>` exists but is malformed JSON or has wrong `spec_version`. | `3` | wherever `--spec` is accepted |
 | `E_USAGE` | Commander usage error (unknown subcommand, bad flag), invalid `--format`, invalid `--target`. | `64` | program-wide |
 
 **Reserved (not yet emitted; adding emission is non-breaking):**
@@ -309,8 +319,10 @@ Rules:
 | `NO_COLOR` | Any non-empty value suppresses ANSI color (per <https://no-color.org/>). |
 | `CI` | Any non-empty value suppresses ANSI color. |
 
-Only `CWLINT_*` env vars are read; no others. The checker performs no
-network I/O and writes nothing outside stdout/stderr.
+Only `NO_COLOR` and `CI` are read; no others. The checker performs no
+network I/O and writes nothing outside stdout/stderr. (The `CWLINT_*`
+prefix is reserved for future use; no `CWLINT_*` variables are consulted
+today.)
 
 ## AI-agent patterns
 
@@ -341,10 +353,28 @@ cwlint check . --strict --json > report.json
 
 ### Drive a script off `schemaVersion`
 
+**Pitfall:** piping straight into `jq` masks cwlint's exit status (jq's own
+exit is always `0`), so an `ErrorEnvelope` looks like a success with a
+missing `schemaVersion`. Branch on the exit status (or on `ok === false`,
+per the discriminator rule above) BEFORE consuming the JSON:
+
 ```bash
-schema=$(cwlint check . --json | jq -r '.schemaVersion // empty')
-if [ "$schema" != "0.1" ]; then
-  echo "warning: cwlint schema changed to $schema; review parser" >&2
+out=$(cwlint check . --json)
+status=$?
+if [ $status -eq 0 ] || [ $status -eq 1 ]; then
+  # Success envelope (exit 0 = clean; exit 1 = --strict gate tripped on real findings).
+  schema=$(echo "$out" | jq -r '.schemaVersion // empty')
+  if [ "$schema" != "0.1" ]; then
+    echo "warning: cwlint schema changed to $schema; review parser" >&2
+  fi
+elif [ $status -eq 3 ] || [ $status -eq 64 ]; then
+  # ErrorEnvelope on stdout under --json (controlled error / usage error).
+  code=$(echo "$out" | jq -r '.code')
+  echo "cwlint failed: $code" >&2
+  exit $status
+else
+  # Exit 2 = uncaught runtime exception; freeform stderr, no JSON on stdout.
+  exit $status
 fi
 ```
 

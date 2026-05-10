@@ -308,11 +308,36 @@ describe("cli", () => {
       expect(stderr).toContain("hint:");
     });
 
-    it("check . --spec /nonexistent/spec.json exits 3 with E_SPEC_INVALID", () => {
+    it("check . --spec /nonexistent/spec.json exits 3 with E_PATH_NOT_FOUND", () => {
+      // Missing-file case is E_PATH_NOT_FOUND ("path doesn't exist"), NOT
+      // E_SPEC_INVALID — the latter is reserved for files that exist but
+      // are malformed or carry the wrong spec_version.
       const { status, stderr } = runCli(["check", ".", "--spec", "/nonexistent/spec/path.json"]);
       expect(status).toBe(3);
-      expect(stderr).toContain("E_SPEC_INVALID");
+      expect(stderr).toContain("E_PATH_NOT_FOUND");
+      expect(stderr).not.toContain("E_SPEC_INVALID");
       expect(stderr).toContain("/nonexistent/spec/path.json");
+    });
+
+    it("check . --spec /nonexistent/spec.json --json emits E_PATH_NOT_FOUND on stdout, exits 3", () => {
+      const { status, stdout } = runCli([
+        "check",
+        ".",
+        "--spec",
+        "/nonexistent/spec/path.json",
+        "--json",
+      ]);
+      expect(status).toBe(3);
+      const env = JSON.parse(stdout) as {
+        ok: boolean;
+        code: string;
+        message: string;
+        hint?: string;
+      };
+      expect(env.ok).toBe(false);
+      expect(env.code).toBe("E_PATH_NOT_FOUND");
+      expect(env.message).toContain("/nonexistent/spec/path.json");
+      expect(env.hint).toBeDefined();
     });
 
     it("check . --spec <malformed-json> --json emits E_SPEC_INVALID envelope on stdout, exits 3", () => {
@@ -332,13 +357,32 @@ describe("cli", () => {
       }
     });
 
-    it("unknown subcommand exits 64 with E_USAGE", () => {
-      const { status, stderr } = runCli(["totally-bogus-cmd"]);
+    it("unknown subcommand exits 64 with E_USAGE on stderr, stdout empty", () => {
+      const { status, stdout, stderr } = runCli(["totally-bogus-cmd"]);
       expect(status).toBe(64);
       // Commander writes its own "error: unknown command ..." to stderr
       // before our handler appends the E_USAGE envelope on top; both lines
-      // should be present.
+      // should be present. stdout must stay empty so piped report consumers
+      // never see usage noise.
       expect(stderr).toContain("E_USAGE");
+      expect(stdout).toBe("");
+    });
+
+    it("check --bad-flag --json routes E_USAGE envelope to stdout as JSON, exits 64", () => {
+      // Commander's exit-override hook fires BEFORE the action body resolves
+      // --json/--format, so handleCommanderError has to recover the intended
+      // format via an argv pre-scan. This test pins that contract: usage
+      // errors under --json land on stdout as a parseable envelope, not on
+      // stderr as text.
+      const { status, stdout, stderr } = runCli(["check", "--bad-flag", "--json"]);
+      expect(status).toBe(64);
+      const env = JSON.parse(stdout) as { ok: boolean; code: string; message: string };
+      expect(env.ok).toBe(false);
+      expect(env.code).toBe("E_USAGE");
+      // Commander still writes its own "error: unknown option..." line to
+      // stderr; we don't assert on its exact wording, just that the
+      // structured envelope is on stdout.
+      expect(stderr).not.toContain("{");
     });
 
     it("check . --strict on a repo with errors exits 1 (preserved contract)", () => {
