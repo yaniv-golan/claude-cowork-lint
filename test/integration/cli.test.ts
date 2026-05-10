@@ -38,7 +38,7 @@ describe("cli", () => {
       // Clean repo emits the "no findings" sentinel rather than a "Summary"
       // line — assert on that to keep this test non-tautological.
       expect(out).toContain("no findings");
-      expect(out).toContain("1.6259.1");
+      expect(out).toContain("1.6608.2");
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }

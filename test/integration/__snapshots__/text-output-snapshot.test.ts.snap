@@ -4,8 +4,8 @@ exports[`text output snapshot > known-bad fixture renders consistently 1`] = `
 "
 SKILL.md
   ✗    3  CW004  forbidden frontmatter field 'disable-model-invocation' = true
-          Forces skill onto Cowork sub-agent path where Bash is filtered. Caused the v0.4.0 founder-skills incident.
+          When set to true, the CLI runtime parser (claude-code-cli@2.1.138) blocks model-driven skill invocation entirely. Enforcement site: \`if (z.disableModelInvocation && !tE7(O,_)) return skill_invoke_model_disabled\` in the v2.1.138 bundle; the kebab-case key is normalised to camelCase by the same parser. Round-1 audit incorrectly concluded the field was no longer recognised because the desktop's \`dh(r,...)\` accessor (manifest *display* layer) doesn't read it — round-3 verification corrected that: the actual frontmatter→runtime parser is in the CLI bundle, where the field has 5+ kebab-form occurrences and 13+ camel-form occurrences including the enforcement site above.
           → Remove \`disable-model-invocation: true\` from frontmatter.
 
-Summary: 1 error, 0 warn, 0 info  (spec: claude-app 1.6259.1)"
+Summary: 1 error, 0 warn, 0 info  (spec: claude-app 1.6608.2)"
 `;

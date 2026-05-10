@@ -3,7 +3,7 @@
  * Reads the same `contracts/cowork-v*.json` files the Python package does.
  */
 
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -95,6 +95,14 @@ export function loadDefaultSpec(): Spec {
   ];
   for (const dir of candidates) {
     try {
+      // Prefer the `cowork-latest.json` symlink/file if it exists. Lexicographic
+      // sort of `cowork-vX.Y.Z.json` filenames doesn't track release order
+      // (e.g. v1.6608.2 sorts BEFORE v2.1.121), so the symlink is the
+      // authoritative pointer to the current bundled contract.
+      const latest = join(dir, "cowork-latest.json");
+      if (existsSync(latest)) {
+        return loadSpec(latest);
+      }
       const files = readdirSync(dir)
         .filter((f) => f.startsWith("cowork-v") && f.endsWith(".json"))
         .sort()

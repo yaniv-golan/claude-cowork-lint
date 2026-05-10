@@ -57,7 +57,7 @@ describe("loadSpec", () => {
 describe("loadDefaultSpec", () => {
   it("resolves the latest contract", () => {
     const spec = loadDefaultSpec();
-    expect(spec.claude_app_version).toBe("1.6259.1");
+    expect(spec.claude_app_version).toBe("1.6608.2");
   });
 
   it("async_dispatch_allowlist contains Bash", () => {
