@@ -1,0 +1,470 @@
+/**
+ * Tests for CW002, CW003, CW004, CW005, CW006, CW008, CW009, CW010, CW011, CW012.
+ * Ported from `_legacy/python/tests/unit/rules/test_other_rules.py`.
+ */
+
+import { describe, expect, it } from "vitest";
+
+import { discover } from "../../../src/discovery.js";
+import {
+  CW002,
+  CW003,
+  CW004,
+  CW005,
+  CW006,
+  CW008,
+  CW009,
+  CW010,
+  CW011,
+  CW012,
+} from "../../../src/rules/index.js";
+import { loadDefaultSpec } from "../../../src/spec.js";
+import { makeRepo } from "../../helpers.js";
+
+const spec = loadDefaultSpec();
+
+// ---------- CW002 ----------
+
+describe("CW002", () => {
+  it("clean with Write", () => {
+    const { root, cleanup } = makeRepo({ "agents/a.md": "---\ntools: [Read, Write]\n---\nx" });
+    try {
+      expect(CW002.check(discover(root), spec)).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("clean with Edit", () => {
+    const { root, cleanup } = makeRepo({ "agents/a.md": "---\ntools: [Read, Edit]\n---\nx" });
+    try {
+      expect(CW002.check(discover(root), spec)).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("flags when neither Write nor Edit is present", () => {
+    const { root, cleanup } = makeRepo({ "agents/a.md": "---\ntools: [Read, Grep]\n---\nx" });
+    try {
+      const findings = CW002.check(discover(root), spec);
+      expect(findings).toHaveLength(1);
+      expect(findings[0]?.ruleId).toBe("CW002");
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("mcp__workspace__bash does not satisfy CW002 (not a structured persistence path)", () => {
+    const { root, cleanup } = makeRepo({
+      "agents/a.md": "---\ntools: [Read, mcp__workspace__bash]\n---\nx",
+    });
+    try {
+      const findings = CW002.check(discover(root), spec);
+      expect(findings).toHaveLength(1);
+      expect(findings[0]?.ruleId).toBe("CW002");
+    } finally {
+      cleanup();
+    }
+  });
+});
+
+// ---------- CW003 ----------
+
+describe("CW003", () => {
+  it("clean with the supported `${...}` form", () => {
+    const { root, cleanup } = makeRepo({
+      "SKILL.md": "---\nuser-invocable: true\n---\nuse ${CLAUDE_PLUGIN_ROOT}/foo",
+    });
+    try {
+      expect(CW003.check(discover(root), spec)).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("flags the bare `$VAR` form", () => {
+    const { root, cleanup } = makeRepo({
+      "SKILL.md": "---\nuser-invocable: true\n---\nuse $CLAUDE_PLUGIN_ROOT/foo",
+    });
+    try {
+      const findings = CW003.check(discover(root), spec);
+      expect(findings).toHaveLength(1);
+      expect(findings[0]?.ruleId).toBe("CW003");
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("does not match a longer identifier (`$CLAUDE_PLUGIN_ROOT_OTHER`)", () => {
+    const { root, cleanup } = makeRepo({
+      "SKILL.md": "---\nuser-invocable: true\n---\nuse $CLAUDE_PLUGIN_ROOT_OTHER/foo",
+    });
+    try {
+      expect(CW003.check(discover(root), spec)).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("respects suppression markers", () => {
+    const body =
+      "---\n" +
+      "user-invocable: true\n" +
+      "---\n" +
+      '<!-- cwlint: ignore CW003 reason="intentional" -->\n' +
+      "$CLAUDE_PLUGIN_ROOT/foo\n";
+    const { root, cleanup } = makeRepo({ "SKILL.md": body });
+    try {
+      expect(CW003.check(discover(root), spec)).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
+});
+
+// ---------- CW004 ----------
+
+describe("CW004", () => {
+  it("clean (no field)", () => {
+    const { root, cleanup } = makeRepo({ "SKILL.md": "---\nuser-invocable: true\n---\nbody" });
+    try {
+      expect(CW004.check(discover(root), spec)).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("clean when set to false", () => {
+    const body = "---\nuser-invocable: true\ndisable-model-invocation: false\n---\nbody";
+    const { root, cleanup } = makeRepo({ "SKILL.md": body });
+    try {
+      expect(CW004.check(discover(root), spec)).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("flags when set to true", () => {
+    const body = "---\nuser-invocable: true\ndisable-model-invocation: true\n---\nbody";
+    const { root, cleanup } = makeRepo({ "SKILL.md": body });
+    try {
+      const findings = CW004.check(discover(root), spec);
+      expect(findings).toHaveLength(1);
+      expect(findings[0]?.ruleId).toBe("CW004");
+    } finally {
+      cleanup();
+    }
+  });
+});
+
+// ---------- CW005 ----------
+
+describe("CW005", () => {
+  it("clean (user-invocable: true)", () => {
+    const { root, cleanup } = makeRepo({ "SKILL.md": "---\nuser-invocable: true\n---\nbody" });
+    try {
+      expect(CW005.check(discover(root), spec)).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("flags when the field is missing", () => {
+    const { root, cleanup } = makeRepo({ "SKILL.md": "---\nname: foo\n---\nbody" });
+    try {
+      const findings = CW005.check(discover(root), spec);
+      expect(findings).toHaveLength(1);
+      expect(findings[0]?.ruleId).toBe("CW005");
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("flags when set to false", () => {
+    const { root, cleanup } = makeRepo({
+      "SKILL.md": "---\nuser-invocable: false\n---\nbody",
+    });
+    try {
+      const findings = CW005.check(discover(root), spec);
+      expect(findings).toHaveLength(1);
+    } finally {
+      cleanup();
+    }
+  });
+});
+
+// ---------- CW006 ----------
+
+describe("CW006", () => {
+  it("flags WriteFile typo", () => {
+    const body = '{"hooks": {"PreToolUse": [{"command": "echo WriteFile here"}]}}';
+    const { root, cleanup } = makeRepo({ "hooks/hooks.json": body });
+    try {
+      const findings = CW006.check(discover(root), spec);
+      expect(findings.some((f) => f.ruleId === "CW006" && f.message.includes("WriteFile"))).toBe(
+        true,
+      );
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("does not flag a known tool name (Write)", () => {
+    const body = '{"hooks": {"PreToolUse": [{"command": "echo Write"}]}}';
+    const { root, cleanup } = makeRepo({ "hooks/hooks.json": body });
+    try {
+      const findings = CW006.check(discover(root), spec);
+      expect(findings.every((f) => f.ruleId !== "CW006")).toBe(true);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("does not flag random capitalised words (Docker)", () => {
+    const body = '{"hooks": {"PreToolUse": [{"command": "echo Docker hello"}]}}';
+    const { root, cleanup } = makeRepo({ "hooks/hooks.json": body });
+    try {
+      const findings = CW006.check(discover(root), spec);
+      expect(findings.every((f) => f.ruleId !== "CW006")).toBe(true);
+    } finally {
+      cleanup();
+    }
+  });
+});
+
+// ---------- CW008 ----------
+
+describe("CW008", () => {
+  it("clean — bash fence with no dispatch cue", () => {
+    const body = [
+      "---",
+      "user-invocable: true",
+      "---",
+      "Some prose here.",
+      "",
+      "```bash",
+      "ls",
+      "```",
+      "",
+    ].join("\n");
+    const { root, cleanup } = makeRepo({ "SKILL.md": body });
+    try {
+      expect(CW008.check(discover(root), spec)).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("flags dispatch cue + bash fence", () => {
+    const body = [
+      "---",
+      "user-invocable: true",
+      "---",
+      "Spawn a sub-agent: Task(subagent_type='reviewer')",
+      "",
+      "```bash",
+      "ls",
+      "```",
+      "",
+    ].join("\n");
+    const { root, cleanup } = makeRepo({ "SKILL.md": body });
+    try {
+      const findings = CW008.check(discover(root), spec);
+      expect(findings).toHaveLength(1);
+      expect(findings[0]?.ruleId).toBe("CW008");
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("main-thread comment silences CW008", () => {
+    const body = [
+      "---",
+      "user-invocable: true",
+      "---",
+      "Spawn: Task(subagent_type='r')",
+      "",
+      "Note: this main-thread block doesn't dispatch.",
+      "```bash",
+      "ls",
+      "```",
+      "",
+    ].join("\n");
+    const { root, cleanup } = makeRepo({ "SKILL.md": body });
+    try {
+      expect(CW008.check(discover(root), spec)).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("does not fire on the prose word 'background'", () => {
+    const body = [
+      "---",
+      "user-invocable: true",
+      "---",
+      "We run the build in the background and check logs.",
+      "",
+      "```bash",
+      "ls",
+      "```",
+      "",
+    ].join("\n");
+    const { root, cleanup } = makeRepo({ "SKILL.md": body });
+    try {
+      expect(CW008.check(discover(root), spec)).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
+});
+
+// ---------- CW009 ----------
+
+describe("CW009", () => {
+  it("clean — no MCP tools at all", () => {
+    const { root, cleanup } = makeRepo({ "agents/a.md": "---\ntools: [Read, Write]\n---\nx" });
+    try {
+      expect(CW009.check(discover(root), spec)).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("workspace MCP server is built-in (no .mcp.json needed)", () => {
+    const { root, cleanup } = makeRepo({
+      "agents/a.md": "---\ntools: [mcp__workspace__bash]\n---\nx",
+    });
+    try {
+      expect(CW009.check(discover(root), spec)).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("registered server in .mcp.json passes", () => {
+    const { root, cleanup } = makeRepo({
+      "agents/a.md": "---\ntools: [mcp__myserver__tool]\n---\nx",
+      ".mcp.json": '{"mcpServers": {"myserver": {}}}',
+    });
+    try {
+      expect(CW009.check(discover(root), spec)).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("unregistered server is flagged", () => {
+    const { root, cleanup } = makeRepo({
+      "agents/a.md": "---\ntools: [mcp__myserver__tool]\n---\nx",
+    });
+    try {
+      const findings = CW009.check(discover(root), spec);
+      expect(findings).toHaveLength(1);
+      expect(findings[0]?.ruleId).toBe("CW009");
+    } finally {
+      cleanup();
+    }
+  });
+});
+
+// ---------- CW010 ----------
+
+describe("CW010", () => {
+  it("clean MY_TOKEN userConfig", () => {
+    const payload = '{"name":"x","version":"0.1.0","userConfig":{"MY_TOKEN":{"type":"string"}}}';
+    const { root, cleanup } = makeRepo({ ".claude-plugin/plugin.json": payload });
+    try {
+      expect(CW010.check(discover(root), spec)).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("flags a name violating the regex", () => {
+    const payload = '{"name":"x","version":"0.1.0","userConfig":{"1foo":{"type":"string"}}}';
+    const { root, cleanup } = makeRepo({ ".claude-plugin/plugin.json": payload });
+    try {
+      const findings = CW010.check(discover(root), spec);
+      expect(findings).toHaveLength(1);
+      expect(findings[0]?.ruleId).toBe("CW010");
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("flags a reserved-name literal (ANTHROPIC_API_KEY)", () => {
+    const payload =
+      '{"name":"x","version":"0.1.0","userConfig":{"ANTHROPIC_API_KEY":{"type":"string"}}}';
+    const { root, cleanup } = makeRepo({ ".claude-plugin/plugin.json": payload });
+    try {
+      const findings = CW010.check(discover(root), spec);
+      expect(findings).toHaveLength(1);
+      expect((findings[0]?.detail ?? "").toLowerCase()).toContain("reserved");
+    } finally {
+      cleanup();
+    }
+  });
+});
+
+// ---------- CW011 ----------
+
+describe("CW011", () => {
+  it("clean — no hooks file", () => {
+    const { root, cleanup } = makeRepo({ "SKILL.md": "---\nuser-invocable: true\n---\nx" });
+    try {
+      expect(CW011.check(discover(root), spec)).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("flags any hooks/hooks.json file", () => {
+    const { root, cleanup } = makeRepo({ "hooks/hooks.json": '{"hooks": {}}' });
+    try {
+      const findings = CW011.check(discover(root), spec);
+      expect(findings).toHaveLength(1);
+      expect(findings[0]?.ruleId).toBe("CW011");
+    } finally {
+      cleanup();
+    }
+  });
+});
+
+// ---------- CW012 ----------
+
+describe("CW012", () => {
+  it("clean PreToolUse event", () => {
+    const body = '{"hooks": {"PreToolUse": [{"command": "echo"}]}}';
+    const { root, cleanup } = makeRepo({ "hooks/hooks.json": body });
+    try {
+      expect(CW012.check(discover(root), spec)).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("flags Stop event", () => {
+    const body = '{"hooks": {"Stop": [{"command": "echo"}]}}';
+    const { root, cleanup } = makeRepo({ "hooks/hooks.json": body });
+    try {
+      const findings = CW012.check(discover(root), spec);
+      expect(findings).toHaveLength(1);
+      expect(findings[0]?.ruleId).toBe("CW012");
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("flags SessionStart event", () => {
+    const body = '{"hooks": {"SessionStart": [{"command": "echo"}]}}';
+    const { root, cleanup } = makeRepo({ "hooks/hooks.json": body });
+    try {
+      const findings = CW012.check(discover(root), spec);
+      expect(findings).toHaveLength(1);
+    } finally {
+      cleanup();
+    }
+  });
+});
