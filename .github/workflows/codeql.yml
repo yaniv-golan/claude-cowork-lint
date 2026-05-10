@@ -15,13 +15,12 @@ permissions:
 
 jobs:
   analyze:
-    if: false  # Disabled during Node-native rewrite; matrix language=python is stale.
     name: analyze
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        language: [python]
+        language: [javascript-typescript]
     steps:
       - uses: actions/checkout@v4
       - uses: github/codeql-action/init@v3

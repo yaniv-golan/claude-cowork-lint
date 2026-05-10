@@ -23,7 +23,13 @@ const REPO_ROOT = join(__dirname, "..", "..");
 
 describe("v0.json schema", () => {
   const schema = JSON.parse(readFileSync(join(REPO_ROOT, "schemas", "v0.json"), "utf-8"));
-  const ajv = new Ajv({ allErrors: true, strict: false });
+  // strict: 'log' (rather than `false`) keeps Ajv from silently accepting
+  // unknown keywords. We import `ajv/dist/2020.js` above so legitimate
+  // draft 2020-12 keywords are recognised; anything Ajv still doesn't know
+  // about (a typo, a future-draft keyword) gets surfaced via console.warn so
+  // a v0.json regression is at least visible in CI output without failing
+  // the suite. Switch back to `false` only if log noise becomes a problem.
+  const ajv = new Ajv({ allErrors: true, strict: "log" });
   addFormats(ajv);
   const validate = ajv.compile(schema);
 

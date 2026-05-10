@@ -73,7 +73,11 @@ function toCanonical(absPath: string): string {
 
 function resolveImport(fromFile: string, spec: string): string | null {
   if (!spec.startsWith(".")) return null;
-  const absNoExt = resolve(dirname(fromFile), spec).replace(/\.js$/, "");
+  // Strip `.js` or `.ts` so the regex matches whether a future relative import
+  // uses the runtime extension (`./foo.js`), the source extension (`./foo.ts`),
+  // or no extension at all (`./foo`). Anything past this point is normalised
+  // to "extensionless" before being mapped onto the canonical module name.
+  const absNoExt = resolve(dirname(fromFile), spec).replace(/\.(js|ts)$/, "");
   const relFromSrc = relative(SRC_ROOT, absNoExt);
   if (relFromSrc.startsWith("..")) return null;
   const segments = relFromSrc.split(/[\\/]/).filter((p) => p.length > 0);
