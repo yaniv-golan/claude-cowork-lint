@@ -4,21 +4,25 @@
  *
  * Subcommands: `check`, `list-rules`, `spec-info`, `doctor`, `extract`.
  *
- * Exit-code contract (see `docs/CLI.md`):
- *   0 = clean, or warn-only mode (default) regardless of finding count
- *   1 = `--strict` AND at least one error-severity finding
- *   2 = runtime/parse exception (uncaught) — distinct from commander's own
- *       argument-parsing failures, which exit with commander's default code
- *       (1) and its own stderr message. The divergence is intentional: it
- *       lets CI distinguish "you invoked me wrong" (commander, code 1) from
- *       "I crashed" (this catch-all, code 2).
+ * Exit-code contract (see `docs/CLI.md` § "Exit codes"; frozen, append-only):
+ *
+ *   0  = clean (no findings, or findings ≤ warn severity without --strict)
+ *   1  = `--strict` AND at least one error-severity finding (PRESERVED
+ *        from v0.1; this is the established CI gate contract).
+ *        Also: `doctor` returns 1 when at least one rule is `stale`
+ *        (analogous to --strict — operator opted into a gate).
+ *   2  = uncaught runtime exception (caught by `main()` only)
+ *   3  = controlled error: `E_PATH_NOT_FOUND` or `E_SPEC_INVALID`
+ *        — emitted as `ErrorEnvelope` (see `src/output/json.ts`).
+ *   64 = usage error: `E_USAGE` (unknown subcommand, bad flag,
+ *        invalid --format value, etc.) — also `ErrorEnvelope`.
  *
  * Output-format contract:
- *   Every `--format json` payload is wrapped in
+ *   Every `--format json` SUCCESS payload is wrapped in
  *   `{schemaVersion: "0.1", finishedAt: <ISO 8601>, ...payload}`. Success
- *   envelopes intentionally omit `ok`; absence of `ok` ≡ success. Commit 2
- *   will layer `ok: false` onto an `ErrorEnvelope` shape — don't add
- *   `ok: true` here.
+ *   envelopes intentionally omit `ok`; absence of `ok` ≡ success.
+ *   Error envelopes carry `ok: false` + a `code` discriminator and are
+ *   emitted on stdout under `--format json`, stderr otherwise.
  *
  *   `--json` is a boolean shorthand for `--format json`. If both flags are
  *   passed explicitly, `--format` wins (`--json --format sarif` → SARIF).
@@ -32,13 +36,14 @@
 
 import { existsSync, readFileSync } from "node:fs";
 
-import { Command } from "commander";
+import { Command, CommanderError } from "commander";
 
 import { VERSION } from "./about.js";
 import type { DoctorReport } from "./doctor.js";
 import { checkRepo } from "./engine.js";
 import { exitCode } from "./findings.js";
-import { formatJson, formatSpecInfoJson, wrapEnvelope } from "./output/json.js";
+import type { ErrorEnvelope } from "./output/json.js";
+import { emitError, formatJson, formatSpecInfoJson, wrapEnvelope } from "./output/json.js";
 import { formatSarif } from "./output/sarif.js";
 import { formatText } from "./output/text.js";
 import { RULE_META } from "./rules/_meta.js";
@@ -173,6 +178,16 @@ function resolveFormat(cmd: Command, opts: { json?: boolean; format: string }): 
 }
 
 /**
+ * Narrow a free-form `--format` string to the union the rest of the
+ * pipeline accepts. Returns `null` if the value is not one of the allowed
+ * formats; the caller is responsible for emitting an `E_USAGE` envelope.
+ */
+function narrowFormat(fmt: string): "text" | "json" | "sarif" | null {
+  if (fmt === "text" || fmt === "json" || fmt === "sarif") return fmt;
+  return null;
+}
+
+/**
  * Returns true iff color output should be suppressed. Honours:
  *  - the `--no-color` CLI flag (commander sets `opts.color === false`),
  *  - the `NO_COLOR` env var (any non-empty value),
@@ -189,12 +204,75 @@ function shouldColor(opts: { color?: boolean }): boolean {
   return true;
 }
 
+/**
+ * Emit an `ErrorEnvelope` and exit with the given status. Centralises the
+ * "format-aware stream + exit" sequence so individual action bodies stay
+ * readable.
+ *
+ * `formatForError` may be "text" | "json" | "sarif" — for the SARIF case we
+ * still emit the freeform stderr message (no error-SARIF dialect is defined).
+ */
+function bailWithError(
+  envelope: ErrorEnvelope,
+  fmt: "text" | "json" | "sarif",
+  exitStatus: number,
+): never {
+  emitError(envelope, { format: fmt });
+  process.exit(exitStatus);
+}
+
+/**
+ * Wrap `loadSpec()` so a missing file, malformed JSON, or wrong
+ * `spec_version` all surface as a single `E_SPEC_INVALID` envelope rather
+ * than an uncaught throw. Returns the loaded Spec on success; bails the
+ * process on failure.
+ */
+function loadSpecOrBail(specPath: string, fmt: "text" | "json" | "sarif"): Spec {
+  if (!existsSync(specPath)) {
+    bailWithError(
+      {
+        ok: false,
+        code: "E_SPEC_INVALID",
+        message: `spec file not found: ${specPath}`,
+        hint: "Pass --spec <path-to-cowork-v*.json> or omit --spec to use the bundled contract.",
+      },
+      fmt,
+      3,
+    );
+  }
+  try {
+    return loadSpec(specPath);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    // `loadSpec` throws on JSON.parse failure OR on spec_version mismatch.
+    // Both surfaces share the same exit code; the message preserves the
+    // underlying detail so the user can tell them apart.
+    const detail = message.startsWith("Unsupported spec_version")
+      ? message
+      : `malformed JSON in spec file: ${specPath} (${message})`;
+    bailWithError(
+      {
+        ok: false,
+        code: "E_SPEC_INVALID",
+        message: detail,
+      },
+      fmt,
+      3,
+    );
+  }
+}
+
 const program = new Command();
 
 program
   .name("claude-cowork-lint")
   .description("Validate Claude skill/plugin/agent repos against the Cowork runtime contract.")
-  .version(`claude-cowork-lint ${VERSION}`, "-V, --version", "Print version and exit");
+  .version(`claude-cowork-lint ${VERSION}`, "-V, --version", "Print version and exit")
+  // exitOverride() lets us route commander's own usage failures (unknown
+  // subcommand, bad flag) through our `ErrorEnvelope` + exit-64 handler in
+  // `main()`. Without this, commander would write its own stderr and
+  // process.exit(1) — which CI couldn't tell apart from --strict failures.
+  .exitOverride();
 
 program
   .command("check <repo>")
@@ -204,6 +282,7 @@ program
   .option("-f, --format <format>", "Output format: text|json|sarif", "text")
   .option("--json", "Shorthand for --format json (overridden if --format is also passed).")
   .option("--no-color", "Suppress ANSI color (also honored: NO_COLOR=<anything>, CI=<anything>)")
+  .option("--quiet", "Suppress the human-readable success line (no-op under --json/--format json)")
   .option(
     "--ignore <ruleId>",
     "Rule IDs to skip (repeatable: --ignore CW001 --ignore CW002).",
@@ -229,19 +308,45 @@ Examples:
       format: string;
       json?: boolean;
       color?: boolean;
+      quiet?: boolean;
       ignore?: string[];
     },
   ) {
-    const fmt = resolveFormat(this, opts);
-    if (fmt !== "text" && fmt !== "json" && fmt !== "sarif") {
-      process.stderr.write(`error: unknown --format '${fmt}' (expected text|json|sarif)\n`);
-      process.exit(2);
+    const fmtRaw = resolveFormat(this, opts);
+    const fmt = narrowFormat(fmtRaw);
+    if (fmt === null) {
+      bailWithError(
+        {
+          ok: false,
+          code: "E_USAGE",
+          message: `unknown --format '${fmtRaw}' (expected text|json|sarif)`,
+        },
+        "text",
+        64,
+      );
     }
+    // `--quiet` is a no-op under JSON output (no chatty success line to
+    // suppress); only the text-mode "✓ no findings" line is gated.
+    const quiet = opts.quiet === true && fmt === "text";
     // `color` is threaded into the text formatter, which currently ignores
     // it (plain ASCII). The wiring is in place so future ANSI work changes
     // only the formatter, not this call site.
     const color = shouldColor(opts);
-    const spec = opts.spec ? loadSpec(opts.spec) : loadDefaultSpec();
+
+    if (!existsSync(repo)) {
+      bailWithError(
+        {
+          ok: false,
+          code: "E_PATH_NOT_FOUND",
+          message: `repo path not found: ${repo}`,
+          hint: "Pass the path to a directory containing SKILL.md / agents/ / hooks/ to check.",
+        },
+        fmt,
+        3,
+      );
+    }
+
+    const spec = opts.spec ? loadSpecOrBail(opts.spec, fmt) : loadDefaultSpec();
     const report = checkRepo(repo, spec, { ignore: opts.ignore ?? [] });
 
     if (fmt === "json") {
@@ -249,7 +354,12 @@ Examples:
     } else if (fmt === "sarif") {
       process.stdout.write(`${JSON.stringify(formatSarif(report), null, 2)}\n`);
     } else {
-      process.stdout.write(`${formatText(report, { color })}\n`);
+      // Text mode. `--quiet` suppresses the "✓ no findings" sentinel on a
+      // clean repo; with findings we always print the report (so CI logs
+      // still carry the diagnostic detail).
+      if (!(quiet && report.findings.length === 0)) {
+        process.stdout.write(`${formatText(report, { color })}\n`);
+      }
     }
 
     // exitCode() returns 1 only when --strict AND there's an error finding.
@@ -263,6 +373,7 @@ program
   .option("-f, --format <format>", "Output format: text|json", "text")
   .option("--json", "Shorthand for --format json (overridden if --format is also passed).")
   .option("--no-color", "Suppress ANSI color (also honored: NO_COLOR=<anything>, CI=<anything>)")
+  .option("--quiet", "Reserved for symmetry; list-rules has no success line to suppress (no-op).")
   .addHelpText(
     "after",
     `
@@ -271,11 +382,22 @@ Examples:
   $ cwlint list-rules --json | jq -r '.rules[].ruleId'
 `,
   )
-  .action(function (this: Command, opts: { format: string; json?: boolean; color?: boolean }) {
-    const fmt = resolveFormat(this, opts);
-    if (fmt !== "text" && fmt !== "json") {
-      process.stderr.write(`error: unknown --format '${fmt}' (expected text|json)\n`);
-      process.exit(2);
+  .action(function (
+    this: Command,
+    opts: { format: string; json?: boolean; color?: boolean; quiet?: boolean },
+  ) {
+    const fmtRaw = resolveFormat(this, opts);
+    const fmt = narrowFormat(fmtRaw);
+    if (fmt === null || fmt === "sarif") {
+      bailWithError(
+        {
+          ok: false,
+          code: "E_USAGE",
+          message: `unknown --format '${fmtRaw}' (expected text|json)`,
+        },
+        "text",
+        64,
+      );
     }
     const color = shouldColor(opts);
 
@@ -296,6 +418,7 @@ program
   .option("-f, --format <format>", "Output format: text|json", "text")
   .option("--json", "Shorthand for --format json (overridden if --format is also passed).")
   .option("--no-color", "Suppress ANSI color (also honored: NO_COLOR=<anything>, CI=<anything>)")
+  .option("--quiet", "Reserved for symmetry; spec-info has no success line to suppress (no-op).")
   .addHelpText(
     "after",
     `
@@ -306,16 +429,24 @@ Examples:
   )
   .action(function (
     this: Command,
-    opts: { spec?: string; format: string; json?: boolean; color?: boolean },
+    opts: { spec?: string; format: string; json?: boolean; color?: boolean; quiet?: boolean },
   ) {
-    const fmt = resolveFormat(this, opts);
-    if (fmt !== "text" && fmt !== "json") {
-      process.stderr.write(`error: unknown --format '${fmt}' (expected text|json)\n`);
-      process.exit(2);
+    const fmtRaw = resolveFormat(this, opts);
+    const fmt = narrowFormat(fmtRaw);
+    if (fmt === null || fmt === "sarif") {
+      bailWithError(
+        {
+          ok: false,
+          code: "E_USAGE",
+          message: `unknown --format '${fmtRaw}' (expected text|json)`,
+        },
+        "text",
+        64,
+      );
     }
     const color = shouldColor(opts);
 
-    const spec = opts.spec ? loadSpec(opts.spec) : loadDefaultSpec();
+    const spec = opts.spec ? loadSpecOrBail(opts.spec, fmt) : loadDefaultSpec();
 
     if (fmt === "json") {
       process.stdout.write(`${JSON.stringify(wrapEnvelope(formatSpecInfoJson(spec)), null, 2)}\n`);
@@ -332,6 +463,10 @@ program
   .option("-f, --format <format>", "Output format: text|json", "text")
   .option("--json", "Shorthand for --format json (overridden if --format is also passed).")
   .option("--no-color", "Suppress ANSI color (also honored: NO_COLOR=<anything>, CI=<anything>)")
+  .option(
+    "--quiet",
+    "Suppress per-rule output when every rule is ok/deprecated (stale rules still print).",
+  )
   .addHelpText(
     "after",
     `
@@ -342,19 +477,28 @@ Examples:
   )
   .action(async function (
     this: Command,
-    opts: { spec?: string; format: string; json?: boolean; color?: boolean },
+    opts: { spec?: string; format: string; json?: boolean; color?: boolean; quiet?: boolean },
   ) {
-    const fmt = resolveFormat(this, opts);
-    if (fmt !== "text" && fmt !== "json") {
-      process.stderr.write(`error: unknown --format '${fmt}' (expected text|json)\n`);
-      process.exit(2);
+    const fmtRaw = resolveFormat(this, opts);
+    const fmt = narrowFormat(fmtRaw);
+    if (fmt === null || fmt === "sarif") {
+      bailWithError(
+        {
+          ok: false,
+          code: "E_USAGE",
+          message: `unknown --format '${fmtRaw}' (expected text|json)`,
+        },
+        "text",
+        64,
+      );
     }
     const color = shouldColor(opts);
+    const quiet = opts.quiet === true && fmt === "text";
 
     // Dynamic import — keeps the doctor module out of the cold-path
     // startup graph (same convention as `extract`).
     const { runDoctor } = await import("./doctor.js");
-    const spec = opts.spec ? loadSpec(opts.spec) : loadDefaultSpec();
+    const spec = opts.spec ? loadSpecOrBail(opts.spec, fmt) : loadDefaultSpec();
     const report = runDoctor(spec);
 
     // Exit non-zero only when at least one rule is `stale` (anchor missing).
@@ -369,7 +513,12 @@ Examples:
       process.stdout.write(`${JSON.stringify(wrapEnvelope(report), null, 2)}\n`);
       process.exit(hasStale ? 1 : 0);
     }
-    process.stdout.write(`${formatDoctorText(report, { color })}\n`);
+    // Text mode. `--quiet` suppresses output only when nothing actionable
+    // is present (every rule ok or deprecated); stale rules always print
+    // so operators see the gate signal in CI logs.
+    if (!(quiet && !hasStale)) {
+      process.stdout.write(`${formatDoctorText(report, { color })}\n`);
+    }
     process.exit(hasStale ? 1 : 0);
   });
 
@@ -391,12 +540,27 @@ Examples:
   .action(async (bundle: string, opts: { target: string }) => {
     const target = opts.target;
     if (target !== "desktop" && target !== "cli") {
-      process.stderr.write(`error: unknown --target '${target}' (expected desktop|cli)\n`);
-      process.exit(2);
+      bailWithError(
+        {
+          ok: false,
+          code: "E_USAGE",
+          message: `unknown --target '${target}' (expected desktop|cli)`,
+        },
+        "text",
+        64,
+      );
     }
     if (!existsSync(bundle)) {
-      process.stderr.write(`error: bundle file not found: ${bundle}\n`);
-      process.exit(2);
+      bailWithError(
+        {
+          ok: false,
+          code: "E_PATH_NOT_FOUND",
+          message: `bundle file not found: ${bundle}`,
+          hint: "Pass the absolute path to the bundle's index.js (desktop) or the SEA binary (cli).",
+        },
+        "text",
+        3,
+      );
     }
     // Dynamic import — keeps the @babel/* dependency out of the cold-path
     // (`check`, `list-rules`, `spec-info`) startup graph.
@@ -410,13 +574,42 @@ Examples:
     process.exit(0);
   });
 
+/**
+ * Map a `CommanderError` onto an `ErrorEnvelope` + exit code. Commander's
+ * --help / --version paths are flagged as zero-exit successes; everything
+ * else (`commander.unknownCommand`, `commander.missingArgument`,
+ * `commander.unknownOption`, `commander.invalidArgument`, …) collapses to
+ * `E_USAGE` with exit 64.
+ */
+function handleCommanderError(err: CommanderError): never {
+  // --help and --version are not failures.
+  if (err.code === "commander.helpDisplayed" || err.code === "commander.version") {
+    process.exit(0);
+  }
+  // Commander has already written its own help/usage hint to stderr;
+  // emit the structured envelope on top so JSON consumers (or anyone
+  // parsing stderr by code) get a discriminator.
+  bailWithError(
+    {
+      ok: false,
+      code: "E_USAGE",
+      message: err.message,
+    },
+    "text",
+    64,
+  );
+}
+
 async function main(): Promise<void> {
   try {
     await program.parseAsync(process.argv);
   } catch (err) {
+    if (err instanceof CommanderError) {
+      handleCommanderError(err);
+    }
+    // Uncaught runtime exception — distinct from controlled errors
+    // (those exit 3 via `bailWithError`) and usage errors (exit 64).
     process.stderr.write(`error: ${err instanceof Error ? err.message : String(err)}\n`);
-    // Code 2 = runtime/uncaught exception. Commander's own parse errors
-    // bypass this catch and exit with its default (1).
     process.exit(2);
   }
 }

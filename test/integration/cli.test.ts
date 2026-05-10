@@ -250,4 +250,166 @@ describe("cli", () => {
       }
     });
   });
+
+  // ------------------------------------------------------------------
+  // Commit 2: ErrorEnvelope + exit-code split tests.
+  //
+  // `execFileSync` throws on a non-zero exit; the error carries `status`
+  // (exit code), `stdout`, and `stderr`. The helper below captures all
+  // three so each assertion can read whichever stream is load-bearing.
+  // ------------------------------------------------------------------
+
+  function runCli(
+    args: readonly string[],
+    env?: NodeJS.ProcessEnv,
+  ): { status: number; stdout: string; stderr: string } {
+    try {
+      const stdout = execFileSync("npx", ["tsx", cliPath, ...args], {
+        encoding: "utf-8",
+        stdio: "pipe",
+        env: env ?? process.env,
+      });
+      return { status: 0, stdout, stderr: "" };
+    } catch (err) {
+      const e = err as { status?: number; stdout?: string; stderr?: string };
+      return {
+        status: e.status ?? -1,
+        stdout: e.stdout ?? "",
+        stderr: e.stderr ?? "",
+      };
+    }
+  }
+
+  describe("ErrorEnvelope + exit-code split", () => {
+    it("check /nonexistent --json emits ErrorEnvelope on stdout, exits 3", () => {
+      const { status, stdout } = runCli(["check", "/nonexistent/path/here", "--json"]);
+      expect(status).toBe(3);
+      const env = JSON.parse(stdout) as {
+        ok: boolean;
+        code: string;
+        message: string;
+        hint?: string;
+      };
+      expect(env.ok).toBe(false);
+      expect(env.code).toBe("E_PATH_NOT_FOUND");
+      expect(env.message).toContain("/nonexistent/path/here");
+      // Hints are documented as optional but emitted for E_PATH_NOT_FOUND
+      // — pin the presence to lock in the agent UX.
+      expect(env.hint).toBeDefined();
+    });
+
+    it("check /nonexistent (text mode) emits to stderr, exits 3", () => {
+      const { status, stdout, stderr } = runCli(["check", "/nonexistent/path/here"]);
+      expect(status).toBe(3);
+      // stdout stays clean for piped report consumers.
+      expect(stdout).toBe("");
+      expect(stderr).toContain("E_PATH_NOT_FOUND");
+      expect(stderr).toContain("/nonexistent/path/here");
+      expect(stderr).toContain("hint:");
+    });
+
+    it("check . --spec /nonexistent/spec.json exits 3 with E_SPEC_INVALID", () => {
+      const { status, stderr } = runCli(["check", ".", "--spec", "/nonexistent/spec/path.json"]);
+      expect(status).toBe(3);
+      expect(stderr).toContain("E_SPEC_INVALID");
+      expect(stderr).toContain("/nonexistent/spec/path.json");
+    });
+
+    it("check . --spec <malformed-json> --json emits E_SPEC_INVALID envelope on stdout, exits 3", () => {
+      const specPath = join(tmpdir(), `cwlint-malformed-spec-${Date.now()}.json`);
+      try {
+        // Deliberately malformed JSON.
+        writeFileSync(specPath, '{ "spec_version": "0", "broken":');
+        const { status, stdout } = runCli(["check", ".", "--spec", specPath, "--json"]);
+        expect(status).toBe(3);
+        const env = JSON.parse(stdout) as { ok: boolean; code: string; message: string };
+        expect(env.ok).toBe(false);
+        expect(env.code).toBe("E_SPEC_INVALID");
+        expect(env.message).toContain("malformed JSON");
+        expect(env.message).toContain(specPath);
+      } finally {
+        rmSync(specPath, { force: true });
+      }
+    });
+
+    it("unknown subcommand exits 64 with E_USAGE", () => {
+      const { status, stderr } = runCli(["totally-bogus-cmd"]);
+      expect(status).toBe(64);
+      // Commander writes its own "error: unknown command ..." to stderr
+      // before our handler appends the E_USAGE envelope on top; both lines
+      // should be present.
+      expect(stderr).toContain("E_USAGE");
+    });
+
+    it("check . --strict on a repo with errors exits 1 (preserved contract)", () => {
+      // Regression: --strict → 1 is the established CI gate and must not
+      // be conflated with the new exit 3 (controlled error) or exit 64
+      // (usage) buckets.
+      const repo = mkdtempSync(join(tmpdir(), "cwlint-cli-"));
+      try {
+        writeFileSync(
+          join(repo, "SKILL.md"),
+          "---\nuser-invocable: true\ndisable-model-invocation: true\n---\nbody",
+        );
+        const { status } = runCli(["check", repo, "--strict"]);
+        expect(status).toBe(1);
+      } finally {
+        rmSync(repo, { recursive: true, force: true });
+      }
+    });
+
+    it("check . --quiet on a clean repo suppresses the success line", () => {
+      const repo = mkdtempSync(join(tmpdir(), "cwlint-cli-"));
+      try {
+        writeFileSync(join(repo, "SKILL.md"), "---\nuser-invocable: true\n---\nbody");
+        const { status, stdout } = runCli(["check", repo, "--quiet"]);
+        expect(status).toBe(0);
+        // stdout intentionally empty under --quiet on a clean repo.
+        expect(stdout).toBe("");
+      } finally {
+        rmSync(repo, { recursive: true, force: true });
+      }
+    });
+
+    it("check . --quiet --json is a no-op (JSON output unaffected)", () => {
+      const repo = mkdtempSync(join(tmpdir(), "cwlint-cli-"));
+      try {
+        writeFileSync(join(repo, "SKILL.md"), "---\nuser-invocable: true\n---\nbody");
+        const { status, stdout } = runCli(["check", repo, "--quiet", "--json"]);
+        expect(status).toBe(0);
+        // --quiet must not suppress the JSON envelope.
+        const payload = JSON.parse(stdout) as {
+          schemaVersion: string;
+          findings: unknown[];
+        };
+        expect(payload.schemaVersion).toBe("0.1");
+        expect(Array.isArray(payload.findings)).toBe(true);
+      } finally {
+        rmSync(repo, { recursive: true, force: true });
+      }
+    });
+
+    it("check . --json --strict on a repo with errors exits 1 with envelope intact", () => {
+      // Bonus: the JSON envelope still gets emitted; --strict only signals
+      // via the exit code.
+      const repo = mkdtempSync(join(tmpdir(), "cwlint-cli-"));
+      try {
+        writeFileSync(
+          join(repo, "SKILL.md"),
+          "---\nuser-invocable: true\ndisable-model-invocation: true\n---\nbody",
+        );
+        const { status, stdout } = runCli(["check", repo, "--strict", "--json"]);
+        expect(status).toBe(1);
+        const payload = JSON.parse(stdout) as {
+          schemaVersion: string;
+          summary: { error: number };
+          findings: unknown[];
+        };
+        expect(payload.schemaVersion).toBe("0.1");
+        expect(payload.summary.error).toBeGreaterThan(0);
+      } finally {
+        rmSync(repo, { recursive: true, force: true });
+      }
+    });
+  });
 });

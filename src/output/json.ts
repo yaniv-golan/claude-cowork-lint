@@ -6,9 +6,9 @@
  *
  *   { schemaVersion: "0.1", finishedAt: <ISO 8601>, ...payload }
  *
- * Success envelopes intentionally omit `ok`. Absence of `ok` ≡ success;
- * commit 2 will layer `ok: false` onto an `ErrorEnvelope` shape. Don't add
- * `ok: true` here.
+ * Success envelopes intentionally omit `ok`. Absence of `ok` ≡ success.
+ * Error envelopes carry `ok: false` + a `code` discriminator — see
+ * `ErrorEnvelope` below. Agents should branch on `ok === false` first.
  *
  * Snake_case keys (mirroring the Python original) and a fixed top-level
  * envelope so downstream consumers can pin against the schema. Driven by
@@ -131,3 +131,58 @@ export function formatSpecInfoJson(spec: Spec): JsonSpecInfo {
 // (`{schemaVersion, finishedAt, spec_version, claude_app_version, rules}`)
 // — do NOT nest the doctor payload under a `report` key. That shape was
 // considered and explicitly rejected in the v0.2.0 design review.
+
+// ---------------------------------------------------------------------------
+// Error envelope
+// ---------------------------------------------------------------------------
+
+/**
+ * Stable, append-only set of error-code discriminators. Documented in
+ * `docs/CLI.md` § "Error codes". Reserved (not yet emitted) values are
+ * `E_BUNDLE_NOT_FOUND` and `E_RUNTIME` — adding them is non-breaking.
+ */
+export type ErrorCode = "E_PATH_NOT_FOUND" | "E_SPEC_INVALID" | "E_USAGE";
+
+/**
+ * The on-the-wire shape emitted on stdout when `--format json` (or its
+ * `--json` alias) is set AND the run fails. Agents discriminate on
+ * `ok === false` BEFORE reading `schemaVersion` — that flag is the
+ * canonical success/failure split.
+ */
+export interface ErrorEnvelope {
+  ok: false;
+  code: ErrorCode;
+  message: string;
+  hint?: string;
+}
+
+/**
+ * Emit an `ErrorEnvelope` on the appropriate stream for the active output
+ * format.
+ *
+ * - `format === "json"` → single-line JSON on **stdout** so a pipeline like
+ *   `cwlint check missing/ --json | jq '.code'` works without the
+ *   consumer needing to consult stderr. The envelope is NOT wrapped by
+ *   `wrapEnvelope` — it has no `schemaVersion`/`finishedAt` fields,
+ *   intentionally; consumers branch on `ok === false` first.
+ * - `format === "text" | "sarif"` → freeform `<code>: <message>` (and an
+ *   optional `hint:` line) on **stderr**, keeping stdout free of error
+ *   noise for piped report consumers.
+ *
+ * The caller is responsible for `process.exit(<code>)` — this function
+ * never exits on its own. See `docs/CLI.md` § "Exit codes" for the
+ * canonical mapping.
+ */
+export function emitError(
+  envelope: ErrorEnvelope,
+  opts: { format: "text" | "json" | "sarif" },
+): void {
+  if (opts.format === "json") {
+    process.stdout.write(`${JSON.stringify(envelope)}\n`);
+    return;
+  }
+  process.stderr.write(`${envelope.code}: ${envelope.message}\n`);
+  if (envelope.hint) {
+    process.stderr.write(`hint: ${envelope.hint}\n`);
+  }
+}
