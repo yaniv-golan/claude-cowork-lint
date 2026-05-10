@@ -31,9 +31,28 @@ describe("CW010 (post-deprecation)", () => {
       expect(findings).toHaveLength(1);
       const f = findings[0];
       expect(f?.severity).toBe("info");
-      const blob = `${f?.message ?? ""} ${f?.detail ?? ""}`.toLowerCase();
-      expect(blob).toMatch(/no longer|operon|deprecated|removed|legacy/);
+      expect(f?.message).toContain("legacy Operon reserved name");
+      expect((f?.detail ?? "").toLowerCase()).toContain("no longer rejected");
       expect(f?.suggestion ?? "").toContain("MY_PLUGIN_API_KEY");
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("suggests a different name for non-ANTHROPIC reserved literals", () => {
+    const { root, cleanup } = makeRepo({
+      ".claude-plugin/plugin.json":
+        '{"name":"x","version":"0.1.0","userConfig":{"DATABASE_URL":{"type":"string"}}}',
+    });
+    try {
+      const findings = CW010.check(discover(root), spec);
+      expect(findings).toHaveLength(1);
+      const suggestion = findings[0]?.suggestion ?? "";
+      // The bug: pre-fix, the suggestion echoed the offending name verbatim
+      // ("Rename to ... e.g. `DATABASE_URL`."). The backtick-quoted example
+      // must not be the bare violating name.
+      expect(suggestion).not.toContain("`DATABASE_URL`");
+      expect(suggestion).toContain("MY_PLUGIN_");
     } finally {
       cleanup();
     }

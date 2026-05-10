@@ -65,6 +65,9 @@ export const CW010: Rule = {
           }
         }
         if (isSuppressed(sups, "CW010", lineNo)) continue;
+        const example = optionName.startsWith("ANTHROPIC_")
+          ? optionName.replace(/^ANTHROPIC_/, "MY_PLUGIN_")
+          : `MY_PLUGIN_${optionName.replace(/^[^A-Za-z]+/, "")}`;
         findings.push({
           ruleId: "CW010",
           severity: "info",
@@ -77,7 +80,7 @@ export const CW010: Rule = {
             "runtime, but using high-entropy reserved names like ANTHROPIC_API_KEY " +
             "for plugin config remains poor hygiene. (Underlying violations: " +
             `${violations.join("; ")}.)`,
-          suggestion: `Rename to something plugin-specific, e.g. \`${optionName.replace(/^ANTHROPIC_/, "MY_PLUGIN_")}\`.`,
+          suggestion: `Rename to something plugin-specific, e.g. \`${example}\`.`,
         });
       }
     }
