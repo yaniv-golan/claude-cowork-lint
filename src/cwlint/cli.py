@@ -89,6 +89,38 @@ def list_rules() -> None:
         typer.echo(f"{rule.rule_id}  {sev:<6}  {rule.summary}")
 
 
+@app.command()
+def extract(
+    bundle: Annotated[
+        Path,
+        typer.Argument(
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            resolve_path=True,
+            help="Path to a JS bundle file.",
+        ),
+    ],
+    target: Annotated[
+        str,
+        typer.Option(
+            "--target",
+            help="Bundle type: 'desktop' (Claude.app) or 'cli' (Bun SEA bundle).",
+        ),
+    ] = "desktop",
+) -> None:
+    """Extract contract fragments from a Claude.app or CLI bundle.
+
+    v0.2 work: framework shipped, validated against synthetic fixtures.
+    Validation against a current production Claude.app is a follow-up.
+    """
+    from cwlint.extractors import REGISTRY
+
+    text = bundle.read_text(encoding="utf-8", errors="replace")
+    out = REGISTRY.run(text, target=target)
+    typer.echo(json.dumps(out, indent=2))
+
+
 @app.command("spec-info")
 def spec_info(
     spec_path: Annotated[

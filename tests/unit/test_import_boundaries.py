@@ -55,6 +55,18 @@ _RULES: list[tuple[str, tuple[str, ...]]] = [
         "cwlint.engine",
         ("cwlint.cli", "cwlint.output"),
     ),
+    (
+        "cwlint.extractors",
+        (
+            "cwlint.cli",
+            "cwlint.engine",
+            "cwlint.output",
+            "cwlint.rules",
+            "cwlint.discovery",
+            "cwlint.spec",
+            "cwlint.findings",
+        ),
+    ),
 ]
 
 
