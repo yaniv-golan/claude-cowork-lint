@@ -41,14 +41,18 @@ export const CW008: Rule = {
           }
         }
       });
+      const reportedFences = new Set<number>();
       for (const cueLine of cueLines) {
         const end = Math.min(cueLine + 30, lines.length);
         for (let fenceIdx = cueLine + 1; fenceIdx <= end; fenceIdx++) {
           if (!BASH_FENCE.test(lines[fenceIdx - 1] ?? "")) continue;
+          // Already reported this fence from an earlier cue — skip.
+          if (reportedFences.has(fenceIdx)) break;
           const preStart = Math.max(0, fenceIdx - 1 - 3);
           const preWindow = lines.slice(preStart, fenceIdx - 1);
           if (preWindow.some((l) => MAIN_THREAD.test(l))) break;
           if (isSuppressed(sups, "CW008", fenceIdx)) break;
+          reportedFences.add(fenceIdx);
           findings.push({
             ruleId: "CW008",
             severity: "warn",

@@ -1,5 +1,6 @@
 /**
- * Tests for CW002, CW003, CW004, CW005, CW006, CW008, CW009, CW010, CW011, CW012.
+ * Tests for CW002, CW003, CW004, CW005, CW006, CW009, CW010, CW011, CW012.
+ * (CW008 lives in `cw008.test.ts`.)
  * Ported from `_legacy/python/tests/unit/rules/test_other_rules.py`.
  */
 
@@ -12,7 +13,6 @@ import {
   CW004,
   CW005,
   CW006,
-  CW008,
   CW009,
   CW010,
   CW011,
@@ -254,93 +254,6 @@ describe("CW006", () => {
     try {
       const findings = CW006.check(discover(root), spec);
       expect(findings.every((f) => f.ruleId !== "CW006")).toBe(true);
-    } finally {
-      cleanup();
-    }
-  });
-});
-
-// ---------- CW008 ----------
-
-describe("CW008", () => {
-  it("clean — bash fence with no dispatch cue", () => {
-    const body = [
-      "---",
-      "user-invocable: true",
-      "---",
-      "Some prose here.",
-      "",
-      "```bash",
-      "ls",
-      "```",
-      "",
-    ].join("\n");
-    const { root, cleanup } = makeRepo({ "SKILL.md": body });
-    try {
-      expect(CW008.check(discover(root), spec)).toEqual([]);
-    } finally {
-      cleanup();
-    }
-  });
-
-  it("flags dispatch cue + bash fence", () => {
-    const body = [
-      "---",
-      "user-invocable: true",
-      "---",
-      "Spawn a sub-agent: Task(subagent_type='reviewer')",
-      "",
-      "```bash",
-      "ls",
-      "```",
-      "",
-    ].join("\n");
-    const { root, cleanup } = makeRepo({ "SKILL.md": body });
-    try {
-      const findings = CW008.check(discover(root), spec);
-      expect(findings).toHaveLength(1);
-      expect(findings[0]?.ruleId).toBe("CW008");
-    } finally {
-      cleanup();
-    }
-  });
-
-  it("main-thread comment silences CW008", () => {
-    const body = [
-      "---",
-      "user-invocable: true",
-      "---",
-      "Spawn: Task(subagent_type='r')",
-      "",
-      "Note: this main-thread block doesn't dispatch.",
-      "```bash",
-      "ls",
-      "```",
-      "",
-    ].join("\n");
-    const { root, cleanup } = makeRepo({ "SKILL.md": body });
-    try {
-      expect(CW008.check(discover(root), spec)).toEqual([]);
-    } finally {
-      cleanup();
-    }
-  });
-
-  it("does not fire on the prose word 'background'", () => {
-    const body = [
-      "---",
-      "user-invocable: true",
-      "---",
-      "We run the build in the background and check logs.",
-      "",
-      "```bash",
-      "ls",
-      "```",
-      "",
-    ].join("\n");
-    const { root, cleanup } = makeRepo({ "SKILL.md": body });
-    try {
-      expect(CW008.check(discover(root), spec)).toEqual([]);
     } finally {
       cleanup();
     }
