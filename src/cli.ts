@@ -18,6 +18,8 @@
  * boolean toggles, so we drop the redundant inverse rather than fake it.
  */
 
+import { existsSync, readFileSync } from "node:fs";
+
 import { Command } from "commander";
 
 import { VERSION } from "./about.js";
@@ -125,10 +127,13 @@ program
       process.stderr.write(`error: unknown --target '${target}' (expected desktop|cli)\n`);
       process.exit(2);
     }
+    if (!existsSync(bundle)) {
+      process.stderr.write(`error: bundle file not found: ${bundle}\n`);
+      process.exit(2);
+    }
     // Dynamic import — keeps the @babel/* dependency out of the cold-path
     // (`check`, `list-rules`, `spec-info`) startup graph.
     const { runExtractors } = await import("./extractors/index.js");
-    const { readFileSync } = await import("node:fs");
     const text = readFileSync(bundle, "utf-8");
     const fragments = runExtractors(text, target);
     process.stdout.write(`${JSON.stringify(fragments, null, 2)}\n`);

@@ -46,13 +46,28 @@ const REGISTRY: RegisteredExtractor[] = [
 ];
 
 export function runExtractors(source: string, target: BundleTarget): Record<string, unknown> {
-  const ctx = buildContext(source);
+  let ctx: ExtractContext;
+  try {
+    ctx = buildContext(source);
+  } catch (err) {
+    throw new Error(`Failed to parse bundle: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
   const out: Record<string, unknown> = {};
   for (const ex of REGISTRY) {
     if (ex.targetBundle !== target) continue;
-    const fragment = ex.run(ctx);
-    if (fragment === null || fragment === undefined) continue;
-    out[ex.fieldName] = fragment;
+    try {
+      const fragment = ex.run(ctx);
+      if (fragment === null || fragment === undefined) continue;
+      out[ex.fieldName] = fragment;
+    } catch (err) {
+      // Per-extractor isolation: a single broken extractor must not blank
+      // out the others. Warn on stderr so machine-readable stdout stays
+      // clean.
+      process.stderr.write(
+        `warn: extractor ${ex.fieldName} threw: ${err instanceof Error ? err.message : String(err)}\n`,
+      );
+    }
   }
   return out;
 }

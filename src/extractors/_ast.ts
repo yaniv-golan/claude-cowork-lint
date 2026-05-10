@@ -30,7 +30,7 @@ import * as t from "@babel/types";
 // two layers of `.default` indirection until we find a function. This keeps
 // us resilient across @babel/traverse versions and downstream bundlers.
 // biome-ignore lint/suspicious/noExplicitAny: ESM/CJS interop dance documented above.
-function unwrapTraverse(mod: any): any {
+export function unwrapTraverse(mod: any): any {
   let cur = mod;
   for (let i = 0; i < 4; i++) {
     if (typeof cur === "function") return cur;
@@ -44,7 +44,12 @@ function unwrapTraverse(mod: any): any {
   return cur;
 }
 type TraverseFn = (parent: t.Node, opts: TraverseOptions) => void;
-const traverse: TraverseFn = unwrapTraverse(_traverseNS) as TraverseFn;
+
+/**
+ * Resolved `@babel/traverse` callable. Exported so extractors share a single
+ * unwrapped reference instead of each duplicating the ESM/CJS interop dance.
+ */
+export const traverse: TraverseFn = unwrapTraverse(_traverseNS) as TraverseFn;
 
 /**
  * Sentinel stored in `symbolMap` when an identifier name is bound more than
@@ -97,15 +102,23 @@ export function buildContext(source: string): ExtractContext {
   });
 
   const symbolMap = new Map<string, t.Node>();
+  // Names declared as bare `var X;` (no initializer). Tracked so the
+  // AssignmentExpression visitor below can complete *exactly* the
+  // forward-decl pattern and ignore unrelated reassignments.
+  const forwardDecls = new Set<string>();
 
   traverse(ast, {
     VariableDeclarator(path: NodePath<t.VariableDeclarator>) {
       const id = path.node.id;
       const init = path.node.init;
-      if (init === null || init === undefined) return;
-      if (t.isIdentifier(id)) {
-        record(symbolMap, id.name, init);
+      if (!t.isIdentifier(id)) return;
+      if (init === null || init === undefined) {
+        // Bare `var X;` — mark as forward-decl so a later `X = <rhs>`
+        // assignment at module scope can complete the binding.
+        forwardDecls.add(id.name);
+        return;
       }
+      record(symbolMap, id.name, init);
     },
     FunctionDeclaration(path: NodePath<t.FunctionDeclaration>) {
       const id = path.node.id;
@@ -115,14 +128,20 @@ export function buildContext(source: string): ExtractContext {
     },
     // Bun-SEA bundles use forward `var X,Y,Z;` declarations followed later by
     // `X = new Set(...), Y = new Set([...X]), Z = ...` — sequence-expression
-    // assignment chains inside a module-init helper. Capture
-    // `AssignmentExpression(=, Identifier, <rhs>)` so resolveStringSet can
-    // follow the binding to the actual `new Set([...])`.
+    // assignment chains inside a module-init helper. We only complete a
+    // *pending* forward declaration: the assignment must use `=`, the LHS
+    // must be a bare Identifier, and that identifier must currently be in
+    // `forwardDecls`. Once consumed, drop it from `forwardDecls` so any
+    // later reassignments (e.g. `X = "junk"` inside a function body) can't
+    // poison the binding via `record()`'s "second distinct binding ->
+    // AMBIGUOUS" rule.
     AssignmentExpression(path: NodePath<t.AssignmentExpression>) {
       if (path.node.operator !== "=") return;
       const left = path.node.left;
       if (!t.isIdentifier(left)) return;
+      if (!forwardDecls.has(left.name)) return;
       record(symbolMap, left.name, path.node.right);
+      forwardDecls.delete(left.name);
     },
   });
 
@@ -197,18 +216,4 @@ export function resolveStringSet(
   }
 
   return [];
-}
-
-/**
- * Helper: dereference an identifier `node` once via the symbol map. Returns
- * the underlying expression node, or `null` for AMBIGUOUS / unknown / nullish.
- * Used by extractors that need the bound value's *shape* (e.g. ArrayExpression
- * for size/exact-element checks), not the resolved string list.
- */
-export function deref(ctx: ExtractContext, node: t.Node | null | undefined): t.Node | null {
-  if (node === null || node === undefined) return null;
-  if (!t.isIdentifier(node)) return node;
-  const bound = ctx.symbolMap.get(node.name);
-  if (bound === undefined || bound === AMBIGUOUS) return null;
-  return bound;
 }

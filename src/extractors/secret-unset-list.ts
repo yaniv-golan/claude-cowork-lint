@@ -8,28 +8,11 @@
  *   { names: string[], count: number }
  */
 
-import type { NodePath, TraverseOptions } from "@babel/traverse";
-import * as _traverseNS from "@babel/traverse";
+import type { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 
 import type { ExtractContext } from "./_ast.js";
-
-// biome-ignore lint/suspicious/noExplicitAny: ESM/CJS interop dance — see _ast.ts
-function unwrapTraverse(mod: any): any {
-  let cur = mod;
-  for (let i = 0; i < 4; i++) {
-    if (typeof cur === "function") return cur;
-    if (cur === null || cur === undefined) break;
-    if (typeof cur.default !== "undefined") {
-      cur = cur.default;
-      continue;
-    }
-    break;
-  }
-  return cur;
-}
-type TraverseFn = (parent: t.Node, opts: TraverseOptions) => void;
-const traverse: TraverseFn = unwrapTraverse(_traverseNS) as TraverseFn;
+import { traverse } from "./_ast.js";
 
 const ANCHOR_TRIPLE = ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPERON_EZPROXY_COOKIE"] as const;
 

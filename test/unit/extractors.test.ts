@@ -128,3 +128,27 @@ describe("AMBIGUOUS sentinel", () => {
     expect(result).toEqual([]);
   });
 });
+
+describe("AssignmentExpression capture", () => {
+  it("completes forward declarations without poisoning module-init bindings", () => {
+    const src = `
+      var $zH;
+      $zH = new Set(["TaskOutput", "ExitPlanMode"]);
+      function helper() { $zH = "junk"; }   // reassignment in inner scope — must NOT poison
+    `;
+    const ctx = buildContext(src);
+    expect(ctx.symbolMap.get("$zH")).not.toBe(AMBIGUOUS);
+    const names = resolveStringSet(ctx, t.identifier("$zH"));
+    expect(names).toEqual(["TaskOutput", "ExitPlanMode"]);
+  });
+
+  it("does not record assignments to identifiers without a forward declaration", () => {
+    const src = `
+      function f() { x = 1; }   // no \`var x;\` ahead — must not appear in symbolMap
+      var foo = "kept";
+    `;
+    const ctx = buildContext(src);
+    expect(ctx.symbolMap.has("x")).toBe(false);
+    expect(ctx.symbolMap.has("foo")).toBe(true);
+  });
+});
