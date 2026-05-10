@@ -5,7 +5,7 @@
 
 import { discover } from "./discovery.js";
 import type { Finding, Report } from "./findings.js";
-import { ALL_RULES } from "./rules.js";
+import { ALL_RULES } from "./rules/index.js";
 import type { Spec } from "./spec.js";
 
 export function checkRepo(root: string, spec: Spec, opts: { ignore?: string[] } = {}): Report {
