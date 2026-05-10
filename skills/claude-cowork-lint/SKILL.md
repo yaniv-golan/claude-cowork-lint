@@ -7,8 +7,10 @@ description: |
   being filtered/stripped.
 
   Triggers: cwlint, claude-cowork-lint, cowork contract, sub-agent tool
-  filter, host-loop excluded builtins, $CLAUDE_PLUGIN_ROOT, plugin hooks not
-  firing, disable-model-invocation.
+  filter, host-loop excluded builtins, plugin hooks not firing,
+  disable-model-invocation.
+  <!-- cwlint: ignore CW003 reason="trigger-phrase docstring, not a runtime reference" -->
+  Also fires on the bare `$CLAUDE_PLUGIN_ROOT` form (CW003).
 
   Requires the `claude-cowork-lint` (or `cwlint`) binary on PATH —
   `pipx install claude-cowork-lint`.
