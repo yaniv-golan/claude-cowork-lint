@@ -3,9 +3,9 @@
  * Reads the same `contracts/cowork-v*.json` files the Python package does.
  */
 
-import { readFileSync, readdirSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export interface NamedStringSet {
   names: string[];
@@ -81,9 +81,7 @@ export interface Spec {
 export function loadSpec(path: string): Spec {
   const raw = JSON.parse(readFileSync(path, "utf-8"));
   if (raw.spec_version !== "0") {
-    throw new Error(
-      `Unsupported spec_version ${raw.spec_version}; this build supports '0' only`,
-    );
+    throw new Error(`Unsupported spec_version ${raw.spec_version}; this build supports '0' only`);
   }
   return raw as Spec;
 }

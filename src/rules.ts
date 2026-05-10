@@ -7,11 +7,11 @@
  */
 
 import { readFileSync } from "node:fs";
-import { relative, basename } from "node:path";
-import type { Finding, Severity } from "./findings.js";
-import type { Spec } from "./spec.js";
+import { basename, relative } from "node:path";
 import type { RepoLayout } from "./discovery.js";
+import type { Finding, Severity } from "./findings.js";
 import { findTokenLine, parseFrontmatter } from "./frontmatter.js";
+import type { Spec } from "./spec.js";
 import { isSuppressed, parseSuppressions } from "./suppression.js";
 
 export interface Rule {
@@ -153,7 +153,7 @@ export const CW003: Rule = {
   check(layout, spec) {
     const target = spec.skill_frontmatter_invariants.env_var_substitution;
     const bare = target.unsupported_form.replace(/^\$/, "");
-    const re = new RegExp(`\\$(?!\\{)${escape(bare)}(?![A-Za-z0-9_])`);
+    const re = new RegExp(`\\$(?!\\{)${escapeRegex(bare)}(?![A-Za-z0-9_])`);
     const findings: Finding[] = [];
     for (const path of layout.skills) {
       const text = readFileSync(path, "utf-8");
@@ -193,7 +193,7 @@ export const CW004: Rule = {
       if (!fm) continue;
       for (const ff of spec.skill_frontmatter_invariants.forbidden_fields) {
         if (!(ff.field in fm.data) || fm.data[ff.field] !== ff.value) continue;
-        const re = new RegExp(`^\\s*${escape(ff.field)}\\s*:`);
+        const re = new RegExp(`^\\s*${escapeRegex(ff.field)}\\s*:`);
         let lineNo = fm.bodyStartLine;
         for (let i = fm.bodyStartLine - 1; i < lines.length; i++) {
           if (re.test(lines[i] ?? "")) {
@@ -343,9 +343,7 @@ function lcs(a: string, b: string): number {
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
       cur[j] =
-        a[i - 1] === b[j - 1]
-          ? (prev[j - 1] ?? 0) + 1
-          : Math.max(prev[j] ?? 0, cur[j - 1] ?? 0);
+        a[i - 1] === b[j - 1] ? (prev[j - 1] ?? 0) + 1 : Math.max(prev[j] ?? 0, cur[j - 1] ?? 0);
     }
     [prev, cur] = [cur, prev];
     cur.fill(0);
@@ -512,7 +510,7 @@ export const CW010: Rule = {
           violations.push(`reserved name '${optionName.toUpperCase()}'`);
         if (violations.length === 0) continue;
         let lineNo = 1;
-        const re = new RegExp(`"${escape(optionName)}"\\s*:`);
+        const re = new RegExp(`"${escapeRegex(optionName)}"\\s*:`);
         for (let i = 0; i < lines.length; i++) {
           if (re.test(lines[i] ?? "")) {
             lineNo = i + 1;
@@ -595,7 +593,7 @@ export const CW012: Rule = {
       for (const event of Object.keys(hooksObj)) {
         if (!BROKEN_EVENTS.has(event)) continue;
         let lineNo = 1;
-        const re = new RegExp(`"${escape(event)}"\\s*:`);
+        const re = new RegExp(`"${escapeRegex(event)}"\\s*:`);
         for (let i = 0; i < lines.length; i++) {
           if (re.test(lines[i] ?? "")) {
             lineNo = i + 1;
@@ -631,6 +629,6 @@ export const ALL_RULES: Rule[] = [
   CW012,
 ];
 
-function escape(s: string): string {
+function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

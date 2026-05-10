@@ -4,7 +4,7 @@
  */
 
 import { readdirSync, statSync } from "node:fs";
-import { join, relative, basename, sep } from "node:path";
+import { basename, join, relative, sep } from "node:path";
 
 const SKIP_DIRS = new Set([
   ".git",
@@ -50,7 +50,10 @@ export function discover(root: string): RepoLayout {
       plugins.push(path);
     } else if (name === "hooks.json" && parts.has("hooks")) {
       pluginHooks.push(path);
-    } else if ((name === "settings.json" || name === "settings.local.json") && parts.has(".claude")) {
+    } else if (
+      (name === "settings.json" || name === "settings.local.json") &&
+      parts.has(".claude")
+    ) {
       settings.push(path);
     } else if (name === ".mcp.json") {
       mcpConfigs.push(path);
@@ -82,7 +85,7 @@ function* walk(dir: string): Iterable<string> {
   }
   for (const entry of entries) {
     const full = join(dir, entry);
-    let st;
+    let st: ReturnType<typeof statSync>;
     try {
       st = statSync(full);
     } catch {

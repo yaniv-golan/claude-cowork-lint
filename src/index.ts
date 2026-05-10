@@ -5,7 +5,13 @@
  * (CW007 reserved/deferred). Reads the same `contracts/cowork-v*.json`.
  */
 
-export { loadDefaultSpec, loadSpec } from "./spec.js";
+export type { RepoLayout } from "./discovery.js";
+export { discover } from "./discovery.js";
+export { checkRepo } from "./engine.js";
+export type { Finding, Report, Severity } from "./findings.js";
+export { exitCode, hasErrors, summarise } from "./findings.js";
+export type { Rule } from "./rules.js";
+export { ALL_RULES } from "./rules.js";
 export type {
   ForbiddenField,
   HostLoopExcludedBuiltins,
@@ -16,12 +22,6 @@ export type {
   Spec,
   SubagentToolFilter,
 } from "./spec.js";
-export type { Finding, Report, Severity } from "./findings.js";
-export { exitCode, hasErrors, summarise } from "./findings.js";
-export { discover } from "./discovery.js";
-export type { RepoLayout } from "./discovery.js";
-export { ALL_RULES } from "./rules.js";
-export type { Rule } from "./rules.js";
-export { checkRepo } from "./engine.js";
-export { isSuppressed, parseSuppressions } from "./suppression.js";
+export { loadDefaultSpec, loadSpec } from "./spec.js";
 export type { Suppression } from "./suppression.js";
+export { isSuppressed, parseSuppressions } from "./suppression.js";

@@ -22,13 +22,8 @@ export function parseSuppressions(lines: string[]): Suppression[] {
   return out;
 }
 
-export function isSuppressed(
-  sups: Suppression[],
-  ruleId: string,
-  lineNo: number,
-): boolean {
+export function isSuppressed(sups: Suppression[], ruleId: string, lineNo: number): boolean {
   return sups.some(
-    (s) =>
-      s.ruleIds.includes(ruleId) && (s.line === lineNo || s.line === lineNo - 1),
+    (s) => s.ruleIds.includes(ruleId) && (s.line === lineNo || s.line === lineNo - 1),
   );
 }

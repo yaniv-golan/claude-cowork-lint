@@ -28,7 +28,7 @@ export function parseFrontmatter(text: string): ParsedFrontmatter | null {
       i += 1;
       continue;
     }
-    const inlineMatch = /^([A-Za-z][A-Za-z0-9_\-]*)\s*:\s*(.+)$/.exec(line);
+    const inlineMatch = /^([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.+)$/.exec(line);
     if (!inlineMatch) {
       i += 1;
       continue;

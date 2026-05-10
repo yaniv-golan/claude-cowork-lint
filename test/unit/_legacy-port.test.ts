@@ -4,17 +4,17 @@
  * auto-picked-up as the canonical smoke test.
  */
 
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
   ALL_RULES,
   checkRepo,
+  isSuppressed,
   loadDefaultSpec,
   parseSuppressions,
-  isSuppressed,
 } from "../../src/index.js";
 
 function makeRepo(files: Record<string, string>): { root: string; cleanup: () => void } {
@@ -58,21 +58,16 @@ describe("loadDefaultSpec", () => {
 
 describe("parseSuppressions", () => {
   it("parses html-comment marker", () => {
-    const sups = parseSuppressions([
-      "<!-- cwlint: ignore CW001 reason=\"legacy\" -->",
-    ]);
+    const sups = parseSuppressions(['<!-- cwlint: ignore CW001 reason="legacy" -->']);
     expect(sups.length).toBe(1);
     expect(sups[0]?.ruleIds).toEqual(["CW001"]);
   });
   it("respects same-line suppression", () => {
-    const sups = parseSuppressions(["foo  # cwlint: ignore CW001 reason=\"x\""]);
+    const sups = parseSuppressions(['foo  # cwlint: ignore CW001 reason="x"']);
     expect(isSuppressed(sups, "CW001", 1)).toBeTruthy();
   });
   it("respects line-above suppression", () => {
-    const sups = parseSuppressions([
-      "# cwlint: ignore CW001 reason=\"x\"",
-      "TaskOutput",
-    ]);
+    const sups = parseSuppressions(['# cwlint: ignore CW001 reason="x"', "TaskOutput"]);
     expect(isSuppressed(sups, "CW001", 2)).toBeTruthy();
   });
 });
@@ -93,8 +88,7 @@ describe("checkRepo", () => {
 
   it("flags CW004 (disable-model-invocation: true)", () => {
     const { root, cleanup } = makeRepo({
-      "SKILL.md":
-        "---\nuser-invocable: true\ndisable-model-invocation: true\n---\nbody",
+      "SKILL.md": "---\nuser-invocable: true\ndisable-model-invocation: true\n---\nbody",
     });
     try {
       const report = checkRepo(root, loadDefaultSpec());
@@ -145,8 +139,7 @@ describe("checkRepo", () => {
 
   it("--ignore skips a rule", () => {
     const { root, cleanup } = makeRepo({
-      "SKILL.md":
-        "---\nuser-invocable: true\ndisable-model-invocation: true\n---\nbody",
+      "SKILL.md": "---\nuser-invocable: true\ndisable-model-invocation: true\n---\nbody",
     });
     try {
       const report = checkRepo(root, loadDefaultSpec(), { ignore: ["CW004"] });
@@ -158,8 +151,7 @@ describe("checkRepo", () => {
 
   it("triggers every rule on a known-bad fixture", () => {
     const { root, cleanup } = makeRepo({
-      "SKILL.md":
-        "---\ndisable-model-invocation: true\n---\nUse $CLAUDE_PLUGIN_ROOT/foo\n",
+      "SKILL.md": "---\ndisable-model-invocation: true\n---\nUse $CLAUDE_PLUGIN_ROOT/foo\n",
       ".claude-plugin/plugin.json":
         '{"name":"x","version":"0.1.0","userConfig":{"ANTHROPIC_API_KEY":{"type":"string"}}}',
       "hooks/hooks.json": '{"hooks": {"Stop": [{"command": "echo WriteFile here"}]}}',
@@ -184,7 +176,10 @@ describe("checkRepo", () => {
         "CW012",
       ];
       const missing = expected.filter((r) => !fired.has(r));
-      expect(missing, `missing: ${missing.join(",")} fired: ${[...fired].sort().join(",")}`).toEqual([]);
+      expect(
+        missing,
+        `missing: ${missing.join(",")} fired: ${[...fired].sort().join(",")}`,
+      ).toEqual([]);
     } finally {
       cleanup();
     }
