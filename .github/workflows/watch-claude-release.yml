@@ -1,17 +1,11 @@
 name: watch-claude-release
 
-# v0.3 — runs the extractor end-to-end against the synthetic fixtures
-# shipped in the repo (since we can't install Claude.app inside GitHub
-# Actions). When wired against a real macOS runner with Claude.app
-# installed, swap `--bundle` to `--app /Applications/Claude.app`.
-
 on:
   schedule:
-    - cron: "0 7 * * *"  # daily at 07:00 UTC
+    - cron: "0 7 * * *"
   workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: { contents: read }
 
 concurrency:
   group: watch-claude-release
@@ -19,22 +13,25 @@ concurrency:
 
 jobs:
   check:
-    if: false  # Disabled during Node-native rewrite; uses uv/Python tooling.
+    if: github.repository == 'yaniv-golan/claude-cowork-lint'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-      - run: uv python install 3.12
-      - run: uv sync --all-extras --frozen
-      - name: Run extractor pipeline against synthetic fixtures
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: npm }
+      - run: npm ci
+      - run: npm run build
+      - name: Run watcher (synthetic fixtures in CI; real Claude.app only on macOS host)
+        env:
+          NODE_OPTIONS: "--max-old-space-size=3072"
         run: |
-          uv run python scripts/check_for_new_release.py \
-            --bundle tests/fixtures/bundles/synthetic_desktop.js \
-            --cli-bundle tests/fixtures/bundles/synthetic_cli.js \
+          npx tsx scripts/check-for-new-release.ts \
+            --bundle test/fixtures/bundles/synthetic-desktop.js \
+            --cli-bundle test/fixtures/bundles/synthetic-cli.js \
             --output-dir watcher-output \
             --report report.json
-      - name: Upload report + candidate contract
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: watcher-output
           path: |
