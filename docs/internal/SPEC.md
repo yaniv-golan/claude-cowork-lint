@@ -340,13 +340,13 @@ Four components, each ships independently:
   },
 
   "skill_frontmatter_invariants": {
-    "description": "Skill manifest fields the runtime checks at load time. Violating these will silently disable the skill or change its dispatch path.",
+    "description": "Skill manifest fields the runtime checks at load time. Violating these will silently disable the skill or change its dispatch path. Anchored on the CLI runtime parser (claude-code-cli@2.1.138), NOT the desktop's manifest-display `dh(r, ...)` accessor — the latter only reads name/description/argument-hint/user-invocable for chooser UI, while the former is the layer that actually drives runtime behaviour.",
     "required_fields": ["user-invocable"],
     "forbidden_fields": [
       {
         "field": "disable-model-invocation",
         "value": true,
-        "reason": "Forces skill onto Cowork sub-agent path where Bash is filtered. Caused the v0.4.0 founder-skills incident."
+        "reason": "CLI enforcement (claude-code-cli@2.1.138): `if (z.disableModelInvocation && !tE7(O, _)) return skill_invoke_model_disabled` — when true, model-driven skill invocation is blocked entirely. Round-1 of the audit mis-anchored this on the desktop frontmatter parser (which doesn't read the field); round-3 verification corrected it to the CLI bundle, where the kebab-form key is normalised to camelCase and gated at the skill_invoke handler shown above."
       }
     ],
     "env_var_substitution": {

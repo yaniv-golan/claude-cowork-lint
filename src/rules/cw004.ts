@@ -38,9 +38,12 @@ export const CW004: Rule = {
           severity: "error",
           path: rel(layout.root, path),
           line: lineNo,
-          message: `forbidden frontmatter field '${ff.field}' = ${JSON.stringify(ff.value)}`,
-          detail: ff.reason,
-          suggestion: `Remove \`${ff.field}: ${JSON.stringify(ff.value)}\` from frontmatter.`,
+          message: `frontmatter field '${ff.field}: true' blocks model-driven invocation of this skill`,
+          detail:
+            "Verified against Claude Code CLI 2.1.138: when present and true, the runtime " +
+            "returns skill_invoke_model_disabled, preventing the model from invoking this skill. " +
+            "Almost certainly not what you want for a skill in a public repo.",
+          suggestion: `Remove \`${ff.field}: true\` from the frontmatter (the default is false).`,
         });
       }
     }

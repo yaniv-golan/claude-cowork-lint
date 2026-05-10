@@ -123,9 +123,22 @@ Reference: ${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh
 **Severity:** error
 **SPEC:** §skill_frontmatter_invariants.forbidden_fields
 
-Setting `disable-model-invocation: true` forces the skill onto the Cowork
-sub-agent path where Bash is filtered. This is the failure mode that hit the
-v0.4.0 founder-skills incident.
+Setting `disable-model-invocation: true` blocks the model from invoking this
+skill at runtime. Verified against Claude Code CLI 2.1.138
+(`contracts/cowork-v1.6608.2.json`): the `skill_invoke` handler returns
+`skill_invoke_model_disabled` when the field is present and true —
+
+```js
+if (z.disableModelInvocation && !tE7(O, _))
+  return skill_invoke_model_disabled
+```
+
+— so the skill is effectively unusable from the chat surface. Almost
+certainly not what you want for a skill in a public repo.
+
+The historical failure mode (pre-1.6608, the field forced sub-agent dispatch
+with filtered Bash) has shifted, but the field remains a footgun — hence
+severity stays `error`.
 
 ### Bad
 
