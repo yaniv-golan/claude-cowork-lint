@@ -136,6 +136,17 @@ The contract should track BOTH the desktop manifest-display layer (4
 fields) and the CLI runtime-parser layer (5 fields) explicitly so future
 audits can spot divergence.
 
+**Task C4 resolution (post-discovery, see `FRONTMATTER-FIELDS-AUDIT.md`):**
+the table above conflated three sibling zod schemas (skill/agent/output-style)
+into one "skill-frontmatter" bucket. `force-for-plugin` and
+`keep-coding-instructions` are actually output-style frontmatter fields
+(schema `VU1`), not skill fields (schema `LU1`). `allowed-tools` IS a
+skill field but is a permission grant (populates `alwaysAllowRules.command`),
+not a tool-set filter equivalent to the agent's `tools:`. Outcome:
+0 new rules added; semantics documented in
+`docs/internal/FRONTMATTER-FIELDS-AUDIT.md` and the contract's
+`runtime_parser_fields_v2_1_138.fields[].actual_schema` annotation.
+
 ## Deliverables produced by this audit
 
 All `/tmp/...` paths below are session-local working artifacts that may

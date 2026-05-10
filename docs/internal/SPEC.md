@@ -365,7 +365,7 @@ Four components, each ships independently:
   },
 
   "skill_frontmatter_invariants": {
-    "description": "Skill manifest fields the runtime checks at load time. Violating these will silently disable the skill or change its dispatch path. Anchored on the CLI runtime parser (claude-code-cli@2.1.138), NOT the desktop's manifest-display `dh(r, ...)` accessor — the latter only reads name/description/argument-hint/user-invocable for chooser UI, while the former is the layer that actually drives runtime behaviour.",
+    "description": "Skill manifest fields the runtime checks at load time. Violating these will silently disable the skill or change its dispatch path. Anchored on the CLI runtime parser (claude-code-cli@2.1.138), NOT the desktop's manifest-display `dh(r, ...)` accessor — the latter only reads name/description/argument-hint/user-invocable for chooser UI, while the former is the layer that actually drives runtime behaviour. SCHEMA PARTITION: the CLI bundle registers three sibling frontmatter schemas via `NU1={skill:LU1, agent:kU1, 'output-style':VU1}`. `claude-cowork-lint` lints the skill (`LU1`) and agent (`kU1`) surfaces; output-style (`VU1`) is not currently linted. Round-4 audit initially conflated all three into a single 'skill-frontmatter' bucket; Task C4 corrected the attribution — see `docs/internal/FRONTMATTER-FIELDS-AUDIT.md`. Notably, `force-for-plugin` and `keep-coding-instructions` are output-style fields, NOT skill fields, and `allowed-tools` is a skill-frontmatter permission grant (it populates `alwaysAllowRules.command`) rather than a tool-set filter equivalent to the agent's `tools:` field.",
     "required_fields": ["user-invocable"],
     "forbidden_fields": [
       {

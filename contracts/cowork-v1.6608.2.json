@@ -318,15 +318,16 @@
       "reason": "Bare form depends on shell-expansion timing not guaranteed for skill subprocesses. The runtime substitutes the braced form via `H.replace(/\\$\\{CLAUDE_PLUGIN_ROOT\\}/g, () => q(_.path))`; the bare form is left as a literal and only resolves when the executing context happens to perform shell expansion (so it works in `bash -c` argv but silently fails in argv-only invocations). The same pattern applies to `${CLAUDE_PLUGIN_DATA}` (parallel substitution regex) — bare `$CLAUDE_PLUGIN_DATA` has the same silent-failure surface. CW003 flags bare forms of both env vars."
     },
     "runtime_parser_fields_v2_1_138": {
-      "_description": "All skill-frontmatter fields the CLI bundle 2.1.138 normalises and reads at runtime, with the count of occurrences in the bundle. This is distinct from the desktop manifest-display layer (which only reads `name`, `description`, `argument-hint`, `user-invocable`). The contract enumerates both layers explicitly so future audits can spot divergence.",
+      "_description": "All frontmatter fields the CLI bundle 2.1.138 normalises and reads at runtime, with the count of occurrences in the bundle. The CLI's `NU1` registry maps three sibling schemas (skill=`LU1`, agent=`kU1`, output-style=`VU1`); the prior round-4 count conflated all kebab-case keys into a single 'skill-frontmatter' bucket. Task C4 (see `docs/internal/FRONTMATTER-FIELDS-AUDIT.md`) corrected the schema attribution per field — `force-for-plugin` and `keep-coding-instructions` belong to `VU1` (output-style), NOT the skill schema. The `actual_schema` annotation records the correct ownership.",
       "fields": [
-        { "name": "user-invocable", "occurrences": 15, "covered_by_rule": "CW005" },
-        { "name": "disable-model-invocation", "occurrences": 5, "covered_by_rule": "CW004" },
-        { "name": "allowed-tools", "occurrences": 28, "covered_by_rule": null, "_followup": "Task C4 — investigate semantics; possibly CW013." },
-        { "name": "force-for-plugin", "occurrences": 4, "covered_by_rule": null, "_followup": "Task C4 — investigate semantics; possibly CW014." },
-        { "name": "keep-coding-instructions", "occurrences": 3, "covered_by_rule": null, "_followup": "Task C4 — investigate semantics; possibly CW015." }
+        { "name": "user-invocable", "occurrences": 15, "actual_schema": "skill", "covered_by_rule": "CW005" },
+        { "name": "disable-model-invocation", "occurrences": 5, "actual_schema": "skill", "covered_by_rule": "CW004" },
+        { "name": "allowed-tools", "occurrences": 28, "actual_schema": "skill", "covered_by_rule": null, "_decision": "Task C4 — document, no rule. Field is a permission grant (folded into `alwaysAllowRules.command`), not a tool-set filter; misuse against Cowork-stripped tools is a silent no-op, not a failure. CW003 already covers the actual failure mode (skill body invokes a stripped tool)." },
+        { "name": "force-for-plugin", "occurrences": 4, "actual_schema": "output-style", "covered_by_rule": null, "_decision": "Task C4 — document, no rule. NOT a skill field; lives in the output-style schema `VU1`. Marked `@internal` and rejected with a runtime warning when set on user-authored styles. `claude-cowork-lint` does not currently lint output-styles." },
+        { "name": "keep-coding-instructions", "occurrences": 3, "actual_schema": "output-style", "covered_by_rule": null, "_decision": "Task C4 — document, no rule. NOT a skill field; lives in the output-style schema `VU1`. Documented opt-in semantics (replace vs augment default coding instructions in the system prompt); flagging would be paternalistic." }
       ],
-      "verified_against": "claude-code-cli@2.1.138"
+      "verified_against": "claude-code-cli@2.1.138",
+      "_audit_reference": "docs/internal/FRONTMATTER-FIELDS-AUDIT.md"
     },
     "manifest_display_fields_v1_6608_2": {
       "_description": "Fields the desktop's `dh(r, '<field>')` accessor reads. This is the manifest *display* layer (skill chooser, settings UI), distinct from the CLI runtime parser. Fields not in this list are still load-bearing at runtime if the CLI parser reads them.",
