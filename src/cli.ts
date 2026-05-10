@@ -113,12 +113,25 @@ program
 
 program
   .command("extract <bundle>")
-  .description("Extract a contract spec from a Claude.app bundle (Task C2).")
-  .action(async (_bundle: string) => {
-    // Task C2 will wire this to a dynamic `await import("./extractors/index.js")`
-    // — kept as a comment for now since that module doesn't exist yet, and a
-    // failed dynamic import would mask other startup errors. Print + exit 0.
-    process.stdout.write("extract subcommand will be wired in Task C2\n");
+  .description("Extract contract fragments from a Claude.app or CLI bundle.")
+  .option(
+    "--target <target>",
+    "Bundle target: desktop (Claude.app .vite/build/index.js) | cli (Bun-SEA bundle).",
+    "desktop",
+  )
+  .action(async (bundle: string, opts: { target: string }) => {
+    const target = opts.target;
+    if (target !== "desktop" && target !== "cli") {
+      process.stderr.write(`error: unknown --target '${target}' (expected desktop|cli)\n`);
+      process.exit(2);
+    }
+    // Dynamic import — keeps the @babel/* dependency out of the cold-path
+    // (`check`, `list-rules`, `spec-info`) startup graph.
+    const { runExtractors } = await import("./extractors/index.js");
+    const { readFileSync } = await import("node:fs");
+    const text = readFileSync(bundle, "utf-8");
+    const fragments = runExtractors(text, target);
+    process.stdout.write(`${JSON.stringify(fragments, null, 2)}\n`);
     process.exit(0);
   });
 
