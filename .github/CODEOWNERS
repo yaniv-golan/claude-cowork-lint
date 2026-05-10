@@ -1,0 +1,10 @@
+# Default reviewer for every change.
+*       @yaniv-golan
+
+# The CLI/JSON contract needs extra eyes.
+/docs/CLI.md      @yaniv-golan
+
+# The contract spec is load-bearing — every change is a behavior change.
+/contracts/       @yaniv-golan
+/schemas/         @yaniv-golan
+/src/cwlint/_contracts/   @yaniv-golan

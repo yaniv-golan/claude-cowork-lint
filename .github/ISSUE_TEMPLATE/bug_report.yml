@@ -1,0 +1,46 @@
+name: Bug report
+description: Something is broken
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `claude-cowork-lint --version` (or `cwlint --version`)
+    validations:
+      required: true
+  - type: input
+    id: spec_version
+    attributes:
+      label: Contract spec used
+      description: e.g. `contracts/cowork-v2.1.121.json` or "default (latest)"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options: [macOS, Linux, Windows]
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Exact commands. A failing test in the style of `tests/integration/test_check_known_bad_repo.py` makes this dramatically easier to fix.
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual output
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected output
+    validations:
+      required: true

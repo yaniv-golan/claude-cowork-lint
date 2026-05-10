@@ -1,0 +1,22 @@
+name: Feature request
+description: A new rule, output format, or capability
+labels: [enhancement]
+body:
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Which Cowork-runtime-contract incident or skill-author pain point would this catch?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: If this is a new rule, propose a CW-ID and severity (error/warn/info), and which spec section it derives from.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
