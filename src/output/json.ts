@@ -17,7 +17,6 @@
  */
 
 import { VERSION } from "../about.js";
-import type { DoctorReport } from "../doctor.js";
 import type { Report } from "../findings.js";
 import { summarise } from "../findings.js";
 import type { Spec } from "../spec.js";
@@ -125,12 +124,10 @@ export function formatSpecInfoJson(spec: Spec): JsonSpecInfo {
   };
 }
 
-/**
- * Wrap a `runDoctor()` report in the envelope. The schema stays FLAT
- * (`{schemaVersion, finishedAt, spec_version, claude_app_version, rules}`)
- * — do NOT nest the doctor payload under a `report` key. That shape was
- * considered and explicitly rejected in the v0.2.0 design review.
- */
-export function formatDoctorJson(report: DoctorReport): DoctorReport {
-  return report;
-}
+// NOTE: There is intentionally no `formatDoctorJson()` wrapper here. The
+// `runDoctor()` payload is spread directly into the envelope by the CLI:
+//   wrapEnvelope(report)
+// The envelope shape stays FLAT
+// (`{schemaVersion, finishedAt, spec_version, claude_app_version, rules}`)
+// — do NOT nest the doctor payload under a `report` key. That shape was
+// considered and explicitly rejected in the v0.2.0 design review.

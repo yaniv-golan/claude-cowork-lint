@@ -35,13 +35,15 @@ import { existsSync, readFileSync } from "node:fs";
 import { Command } from "commander";
 
 import { VERSION } from "./about.js";
+import type { DoctorReport } from "./doctor.js";
 import { checkRepo } from "./engine.js";
 import { exitCode } from "./findings.js";
-import { formatDoctorJson, formatJson, formatSpecInfoJson, wrapEnvelope } from "./output/json.js";
+import { formatJson, formatSpecInfoJson, wrapEnvelope } from "./output/json.js";
 import { formatSarif } from "./output/sarif.js";
 import { formatText } from "./output/text.js";
 import { RULE_META } from "./rules/_meta.js";
 import { ALL_RULES } from "./rules/index.js";
+import type { Spec } from "./spec.js";
 import { loadDefaultSpec, loadSpec } from "./spec.js";
 
 /**
@@ -80,6 +82,82 @@ export function formatListRulesJson(): { rules: JsonRuleSummary[] } {
     };
   });
   return { rules };
+}
+
+/**
+ * Render `list-rules` as `id  sev  summary` lines.
+ *
+ * Lives in cli.ts (not `src/output/text.ts`) because the output layer is
+ * forbidden from importing from `rules/`. The `color` option is reserved
+ * for future ANSI work and currently has no visible effect — plain ASCII
+ * is emitted unconditionally. See `shouldColor()` for the gate.
+ */
+export function formatTextListRules(
+  rules: typeof ALL_RULES,
+  _opts: { color: boolean } = { color: true },
+): string {
+  const sorted = [...rules].sort((a, b) => (a.ruleId < b.ruleId ? -1 : 1));
+  return sorted.map((r) => `${r.ruleId}  ${r.severity}  ${r.summary}`).join("\n");
+}
+
+/**
+ * Render `spec-info` as `key  value` padded rows.
+ *
+ * The `color` option is reserved for future ANSI work and currently has
+ * no visible effect — plain ASCII is emitted unconditionally. See
+ * `shouldColor()` for the gate.
+ */
+export function formatTextSpecInfo(
+  spec: Spec,
+  _opts: { color: boolean } = { color: true },
+): string {
+  const lines: Array<[string, string | number]> = [
+    ["spec_version", spec.spec_version],
+    ["claude_app_version", spec.claude_app_version],
+    ["operon_core_version", spec.operon_core_version],
+    ["host_loop_safe_set", spec.host_loop_tool_substitution.host_loop_safe_set.names.length],
+    [
+      "host_loop_excluded_builtins",
+      spec.host_loop_tool_substitution.host_loop_excluded_builtins.names.length,
+    ],
+    ["subagent_drop_set", spec.subagent_tool_filter.drop_set.names.length],
+    [
+      "subagent_async_dispatch_allowlist",
+      spec.subagent_tool_filter.async_dispatch_allowlist.names.length,
+    ],
+    ["kernel_env_passthrough_allowlist", spec.kernel_env_passthrough.allowlist.length],
+    ["secret_unset_list", spec.secret_unset_list.names.length],
+  ];
+  const width = Math.max(...lines.map(([k]) => k.length));
+  return lines.map(([k, v]) => `${k.padEnd(width)}  ${v}`).join("\n");
+}
+
+/**
+ * Render `doctor` output as one row per rule. The `color` option is
+ * reserved for future ANSI work and currently has no visible effect —
+ * plain ASCII (with Unicode glyphs for the status icon) is emitted
+ * unconditionally. See `shouldColor()` for the gate.
+ */
+export function formatDoctorText(
+  report: DoctorReport,
+  _opts: { color: boolean } = { color: true },
+): string {
+  // Width of the `overall` column. Longest possible value is "deprecated"
+  // (10 chars); pad to 11 for one space of breathing room.
+  const OVERALL_WIDTH = 11;
+  const out: string[] = [];
+  for (const r of report.rules) {
+    const icon = r.overall === "ok" ? "✓" : r.overall === "deprecated" ? "—" : "✗";
+    out.push(
+      `${icon} ${r.ruleId}  ${r.overall.padEnd(OVERALL_WIDTH)}  verified ${r.verified_against}  status ${r.status}`,
+    );
+    if (r.overall === "stale") {
+      for (const a of r.anchors.filter((x) => !x.resolved)) {
+        out.push(`     missing anchor: ${a.path}`);
+      }
+    }
+  }
+  return out.join("\n");
 }
 
 /**
@@ -125,7 +203,7 @@ program
   .option("--strict", "Exit 1 on any error-severity finding (default: warn-only).", false)
   .option("-f, --format <format>", "Output format: text|json|sarif", "text")
   .option("--json", "Shorthand for --format json (overridden if --format is also passed).")
-  .option("--no-color", "Disable ANSI color in text output (also honors NO_COLOR/CI env vars).")
+  .option("--no-color", "Suppress ANSI color (also honored: NO_COLOR=<anything>, CI=<anything>)")
   .option(
     "--ignore <ruleId>",
     "Rule IDs to skip (repeatable: --ignore CW001 --ignore CW002).",
@@ -137,7 +215,7 @@ program
     `
 Examples:
   $ cwlint check . --strict
-  $ cwlint check . --json --strict | jq '.findings[]'
+  $ cwlint check . --json --strict | jq '.findings[]'      # empty array on a clean repo
   $ cwlint check ./skill --ignore CW003 --ignore CW011
   $ cwlint check . --format sarif > findings.sarif
 `,
@@ -159,9 +237,10 @@ Examples:
       process.stderr.write(`error: unknown --format '${fmt}' (expected text|json|sarif)\n`);
       process.exit(2);
     }
-    // shouldColor() exists for future ANSI gating; the text formatter is
-    // plain ASCII today so this call has no visible effect yet.
-    shouldColor(opts);
+    // `color` is threaded into the text formatter, which currently ignores
+    // it (plain ASCII). The wiring is in place so future ANSI work changes
+    // only the formatter, not this call site.
+    const color = shouldColor(opts);
     const spec = opts.spec ? loadSpec(opts.spec) : loadDefaultSpec();
     const report = checkRepo(repo, spec, { ignore: opts.ignore ?? [] });
 
@@ -170,7 +249,7 @@ Examples:
     } else if (fmt === "sarif") {
       process.stdout.write(`${JSON.stringify(formatSarif(report), null, 2)}\n`);
     } else {
-      process.stdout.write(`${formatText(report)}\n`);
+      process.stdout.write(`${formatText(report, { color })}\n`);
     }
 
     // exitCode() returns 1 only when --strict AND there's an error finding.
@@ -183,7 +262,7 @@ program
   .description("Print every CWxxx rule with severity and one-line summary.")
   .option("-f, --format <format>", "Output format: text|json", "text")
   .option("--json", "Shorthand for --format json (overridden if --format is also passed).")
-  .option("--no-color", "Disable ANSI color in text output (also honors NO_COLOR/CI env vars).")
+  .option("--no-color", "Suppress ANSI color (also honored: NO_COLOR=<anything>, CI=<anything>)")
   .addHelpText(
     "after",
     `
@@ -198,7 +277,7 @@ Examples:
       process.stderr.write(`error: unknown --format '${fmt}' (expected text|json)\n`);
       process.exit(2);
     }
-    shouldColor(opts);
+    const color = shouldColor(opts);
 
     if (fmt === "json") {
       process.stdout.write(`${JSON.stringify(wrapEnvelope(formatListRulesJson()), null, 2)}\n`);
@@ -207,10 +286,7 @@ Examples:
 
     // Text mode intentionally retains the original `id  sev  summary`
     // layout. The JSON form is the one consumers should pin against.
-    const sorted = [...ALL_RULES].sort((a, b) => (a.ruleId < b.ruleId ? -1 : 1));
-    for (const r of sorted) {
-      process.stdout.write(`${r.ruleId}  ${r.severity}  ${r.summary}\n`);
-    }
+    process.stdout.write(`${formatTextListRules(ALL_RULES, { color })}\n`);
   });
 
 program
@@ -219,7 +295,7 @@ program
   .option("--spec <path>", "Override the bundled contract.")
   .option("-f, --format <format>", "Output format: text|json", "text")
   .option("--json", "Shorthand for --format json (overridden if --format is also passed).")
-  .option("--no-color", "Disable ANSI color in text output (also honors NO_COLOR/CI env vars).")
+  .option("--no-color", "Suppress ANSI color (also honored: NO_COLOR=<anything>, CI=<anything>)")
   .addHelpText(
     "after",
     `
@@ -237,7 +313,7 @@ Examples:
       process.stderr.write(`error: unknown --format '${fmt}' (expected text|json)\n`);
       process.exit(2);
     }
-    shouldColor(opts);
+    const color = shouldColor(opts);
 
     const spec = opts.spec ? loadSpec(opts.spec) : loadDefaultSpec();
 
@@ -246,27 +322,7 @@ Examples:
       return;
     }
 
-    const lines: Array<[string, string | number]> = [
-      ["spec_version", spec.spec_version],
-      ["claude_app_version", spec.claude_app_version],
-      ["operon_core_version", spec.operon_core_version],
-      ["host_loop_safe_set", spec.host_loop_tool_substitution.host_loop_safe_set.names.length],
-      [
-        "host_loop_excluded_builtins",
-        spec.host_loop_tool_substitution.host_loop_excluded_builtins.names.length,
-      ],
-      ["subagent_drop_set", spec.subagent_tool_filter.drop_set.names.length],
-      [
-        "subagent_async_dispatch_allowlist",
-        spec.subagent_tool_filter.async_dispatch_allowlist.names.length,
-      ],
-      ["kernel_env_passthrough_allowlist", spec.kernel_env_passthrough.allowlist.length],
-      ["secret_unset_list", spec.secret_unset_list.names.length],
-    ];
-    const width = Math.max(...lines.map(([k]) => k.length));
-    for (const [k, v] of lines) {
-      process.stdout.write(`${k.padEnd(width)}  ${v}\n`);
-    }
+    process.stdout.write(`${formatTextSpecInfo(spec, { color })}\n`);
   });
 
 program
@@ -275,7 +331,7 @@ program
   .option("--spec <path>", "Override the bundled contract.")
   .option("-f, --format <format>", "Output format: text|json", "text")
   .option("--json", "Shorthand for --format json (overridden if --format is also passed).")
-  .option("--no-color", "Disable ANSI color in text output (also honors NO_COLOR/CI env vars).")
+  .option("--no-color", "Suppress ANSI color (also honored: NO_COLOR=<anything>, CI=<anything>)")
   .addHelpText(
     "after",
     `
@@ -293,7 +349,7 @@ Examples:
       process.stderr.write(`error: unknown --format '${fmt}' (expected text|json)\n`);
       process.exit(2);
     }
-    shouldColor(opts);
+    const color = shouldColor(opts);
 
     // Dynamic import — keeps the doctor module out of the cold-path
     // startup graph (same convention as `extract`).
@@ -301,30 +357,19 @@ Examples:
     const spec = opts.spec ? loadSpec(opts.spec) : loadDefaultSpec();
     const report = runDoctor(spec);
 
-    // Width of the `overall` column. Longest possible value is "deprecated"
-    // (10 chars); pad to 11 for one space of breathing room.
-    const OVERALL_WIDTH = 11;
     // Exit non-zero only when at least one rule is `stale` (anchor missing).
     // `deprecated` is intentional/known and does NOT trip CI — that's the
     // whole point of the lifecycle bit.
     const hasStale = report.rules.some((r) => r.overall === "stale");
 
     if (fmt === "json") {
-      // FLAT envelope shape — do NOT nest `report` under a key.
-      process.stdout.write(`${JSON.stringify(wrapEnvelope(formatDoctorJson(report)), null, 2)}\n`);
+      // FLAT envelope shape — do NOT nest `report` under a key. The doctor
+      // payload's top-level fields (spec_version, claude_app_version, rules)
+      // are spread directly into the envelope.
+      process.stdout.write(`${JSON.stringify(wrapEnvelope(report), null, 2)}\n`);
       process.exit(hasStale ? 1 : 0);
     }
-    for (const r of report.rules) {
-      const icon = r.overall === "ok" ? "✓" : r.overall === "deprecated" ? "—" : "✗";
-      process.stdout.write(
-        `${icon} ${r.ruleId}  ${r.overall.padEnd(OVERALL_WIDTH)}  verified ${r.verified_against}  status ${r.status}\n`,
-      );
-      if (r.overall === "stale") {
-        for (const a of r.anchors.filter((x) => !x.resolved)) {
-          process.stdout.write(`     missing anchor: ${a.path}\n`);
-        }
-      }
-    }
+    process.stdout.write(`${formatDoctorText(report, { color })}\n`);
     process.exit(hasStale ? 1 : 0);
   });
 

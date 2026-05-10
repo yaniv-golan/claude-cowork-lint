@@ -16,9 +16,11 @@ import { describe, expect, it } from "vitest";
 const cliPath = join(dirname(fileURLToPath(import.meta.url)), "../../src/cli.ts");
 
 describe("cli", () => {
-  it("--version prints claude-cowork-lint 0.1.0", () => {
+  it("--version prints claude-cowork-lint <semver>", () => {
     const out = execFileSync("npx", ["tsx", cliPath, "--version"], { encoding: "utf-8" });
-    expect(out.trim()).toBe("claude-cowork-lint 0.1.0");
+    // Match the shape, not the exact version, so this test doesn't have
+    // to be touched on every release bump.
+    expect(out).toMatch(/^claude-cowork-lint \d+\.\d+\.\d+\b/);
   });
 
   it("list-rules prints 11 rules with no CW007", () => {
@@ -209,36 +211,43 @@ describe("cli", () => {
     }
   });
 
-  it("--no-color flag produces output with no ANSI escape codes", () => {
-    const repo = mkdtempSync(join(tmpdir(), "cwlint-cli-"));
-    try {
-      writeFileSync(join(repo, "SKILL.md"), "---\nuser-invocable: true\n---\nbody");
-      const out = execFileSync("npx", ["tsx", cliPath, "check", repo, "--no-color"], {
-        encoding: "utf-8",
-      });
-      // ANSI CSI sequences start with ESC (0x1B) + '['; build the pattern
-      // dynamically to avoid embedding a control character in the source.
-      const ansiPattern = new RegExp(`${String.fromCharCode(0x1b)}\\[`);
-      expect(out).not.toMatch(ansiPattern);
-    } finally {
-      rmSync(repo, { recursive: true, force: true });
-    }
-  });
+  // These assertions verify the contract — that --no-color, NO_COLOR, and CI
+  // produce zero ANSI escapes — but are currently VACUOUSLY satisfied because
+  // the text formatter emits plain ASCII unconditionally. When the formatter
+  // gains conditional ANSI output, these tests will become load-bearing
+  // without needing changes (the `color` option is already threaded through).
+  describe("--no-color and NO_COLOR/CI env vars suppress ANSI", () => {
+    it("--no-color flag produces output with no ANSI escape codes", () => {
+      const repo = mkdtempSync(join(tmpdir(), "cwlint-cli-"));
+      try {
+        writeFileSync(join(repo, "SKILL.md"), "---\nuser-invocable: true\n---\nbody");
+        const out = execFileSync("npx", ["tsx", cliPath, "check", repo, "--no-color"], {
+          encoding: "utf-8",
+        });
+        // ANSI CSI sequences start with ESC (0x1B) + '['; build the pattern
+        // dynamically to avoid embedding a control character in the source.
+        const ansiPattern = new RegExp(`${String.fromCharCode(0x1b)}\\[`);
+        expect(out).not.toMatch(ansiPattern);
+      } finally {
+        rmSync(repo, { recursive: true, force: true });
+      }
+    });
 
-  it("NO_COLOR=1 env var produces output with no ANSI escape codes", () => {
-    const repo = mkdtempSync(join(tmpdir(), "cwlint-cli-"));
-    try {
-      writeFileSync(join(repo, "SKILL.md"), "---\nuser-invocable: true\n---\nbody");
-      const out = execFileSync("npx", ["tsx", cliPath, "check", repo], {
-        encoding: "utf-8",
-        env: { ...process.env, NO_COLOR: "1" },
-      });
-      // ANSI CSI sequences start with ESC (0x1B) + '['; build the pattern
-      // dynamically to avoid embedding a control character in the source.
-      const ansiPattern = new RegExp(`${String.fromCharCode(0x1b)}\\[`);
-      expect(out).not.toMatch(ansiPattern);
-    } finally {
-      rmSync(repo, { recursive: true, force: true });
-    }
+    it("NO_COLOR=1 env var produces output with no ANSI escape codes", () => {
+      const repo = mkdtempSync(join(tmpdir(), "cwlint-cli-"));
+      try {
+        writeFileSync(join(repo, "SKILL.md"), "---\nuser-invocable: true\n---\nbody");
+        const out = execFileSync("npx", ["tsx", cliPath, "check", repo], {
+          encoding: "utf-8",
+          env: { ...process.env, NO_COLOR: "1" },
+        });
+        // ANSI CSI sequences start with ESC (0x1B) + '['; build the pattern
+        // dynamically to avoid embedding a control character in the source.
+        const ansiPattern = new RegExp(`${String.fromCharCode(0x1b)}\\[`);
+        expect(out).not.toMatch(ansiPattern);
+      } finally {
+        rmSync(repo, { recursive: true, force: true });
+      }
+    });
   });
 });

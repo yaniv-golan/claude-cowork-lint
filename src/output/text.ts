@@ -17,7 +17,16 @@ const ICON: Record<Severity, string> = {
   info: "i",
 };
 
-export function formatText(report: Report): string {
+/**
+ * Render a `checkRepo()` report as human-readable text.
+ *
+ * The `color` option is reserved for future ANSI work: the text formatter
+ * currently emits plain ASCII unconditionally, so passing `color: false`
+ * has no visible effect today. The signature is in place so when ANSI
+ * lands, only this function changes — call sites are already gated by
+ * `shouldColor()` in `src/cli.ts`.
+ */
+export function formatText(report: Report, _opts: { color: boolean } = { color: true }): string {
   if (report.findings.length === 0) {
     return `✓ no findings  (spec: claude-app ${report.claudeAppVersion})`;
   }
