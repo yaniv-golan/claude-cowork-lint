@@ -1,0 +1,22 @@
+{
+  "$comment": "Modeled after a real-world hook (trailofbits/fp-check) — the prompt: field contains natural-language prose, including English words that visually resemble tool names. CW006 must not flag these.",
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Verify the actual analysis is complete. Real security impact must be distinguished from operational concerns. Read the trace carefully before proceeding.",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "echo 'use the WriteFile tool here'",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

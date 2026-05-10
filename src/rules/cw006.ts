@@ -2,12 +2,14 @@
  * CW006 — hook command references a tool name not in any allowlist (typo
  * detector).
  *
- * Walks every string inside hooks.json / settings.json payloads, picks out
- * CamelCase tokens that look like tool names, and emits warnings for tokens
- * that don't exist in any spec allowlist but have a close match (LCS-based
- * similarity ≥ 0.7) to a real tool name.
+ * Scoped to `command:` field values inside hook-handler objects (see
+ * `extractHookCommands`). Picks out CamelCase tokens that look like tool
+ * names, and emits warnings for tokens that don't exist in any spec
+ * allowlist but have a close match (LCS-based similarity ≥ 0.7) to a real
+ * tool name. Natural-language prose inside `prompt:` fields is ignored.
  */
 import { readFileSync } from "node:fs";
+import { extractHookCommands } from "../_hook.js";
 import type { Finding } from "../findings.js";
 import type { Spec } from "../spec.js";
 import { isSuppressed, parseSuppressions } from "../suppression.js";
@@ -25,16 +27,12 @@ export const CW006: Rule = {
     const seen = new Set<string>();
     for (const path of [...layout.pluginHooksFiles, ...layout.settingsFiles]) {
       const text = readFileSync(path, "utf-8");
-      let payload: unknown;
-      try {
-        payload = JSON.parse(text);
-      } catch {
-        continue;
-      }
+      const commands = extractHookCommands(text);
+      if (commands.length === 0) continue;
       const lines = text.split("\n");
       const sups = parseSuppressions(lines);
-      walkStrings(payload, (s) => {
-        for (const match of s.matchAll(TOOL_TOKEN)) {
+      for (const { command, approxLine } of commands) {
+        for (const match of command.matchAll(TOOL_TOKEN)) {
           const candidate = match[1] ?? "";
           if (!candidate || known.has(candidate)) continue;
           const suggestion = closestMatch(candidate, known);
@@ -42,30 +40,17 @@ export const CW006: Rule = {
           const key = `${path}:${candidate}`;
           if (seen.has(key)) continue;
           seen.add(key);
-          // TODO(parity): the legacy Python (cw006_unknown_tool_name.py) computed lineNo
-          //   once per enclosing JSON string, not per candidate. The current per-candidate
-          //   scan can attribute findings to an earlier unrelated occurrence of the same
-          //   token (e.g. inside a docstring). Revisit when adding the snapshot test
-          //   (Task E2) — a fixture pinning the expected line number will catch any
-          //   future drift in either direction.
-          let lineNo = 1;
-          for (let i = 0; i < lines.length; i++) {
-            if ((lines[i] ?? "").includes(candidate)) {
-              lineNo = i + 1;
-              break;
-            }
-          }
-          if (isSuppressed(sups, "CW006", lineNo)) continue;
+          if (isSuppressed(sups, "CW006", approxLine)) continue;
           findings.push({
             ruleId: "CW006",
             severity: "warn",
             path: rel(layout.root, path),
-            line: lineNo,
+            line: approxLine,
             message: `unknown tool name '${candidate}' — did you mean '${suggestion}'?`,
             suggestion: `Replace '${candidate}' with '${suggestion}'.`,
           });
         }
-      });
+      }
     }
     return findings;
   },
@@ -117,18 +102,4 @@ function lcs(a: string, b: string): number {
     cur.fill(0);
   }
   return prev[n] ?? 0;
-}
-
-function walkStrings(node: unknown, cb: (s: string) => void): void {
-  if (typeof node === "string") {
-    cb(node);
-    return;
-  }
-  if (Array.isArray(node)) {
-    for (const v of node) walkStrings(v, cb);
-    return;
-  }
-  if (node && typeof node === "object") {
-    for (const v of Object.values(node)) walkStrings(v, cb);
-  }
 }
