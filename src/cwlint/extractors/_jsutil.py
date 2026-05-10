@@ -49,7 +49,7 @@ def resolve_set_body(source: str, body: str) -> list[str]:
         if tok.startswith("..."):
             inner = tok[3:].strip()
             spread_def = re.search(
-                rf'(?<![A-Za-z0-9_$]){re.escape(inner)}\s*=\s*(?:new\s+Set\()?\[([^\]]+)\]',
+                rf"(?<![A-Za-z0-9_$]){re.escape(inner)}\s*=\s*(?:new\s+Set\()?\[([^\]]+)\]",
                 source,
             )
             if spread_def:

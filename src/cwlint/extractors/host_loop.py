@@ -54,9 +54,7 @@ class HostLoopExtractor(Extractor):
                     "names": names,
                     "count": len(names),
                     "mcp_replacements": {
-                        n: _REPLACEMENTS_HEURISTIC[n]
-                        for n in names
-                        if n in _REPLACEMENTS_HEURISTIC
+                        n: _REPLACEMENTS_HEURISTIC[n] for n in names if n in _REPLACEMENTS_HEURISTIC
                     },
                 }
         return out or None

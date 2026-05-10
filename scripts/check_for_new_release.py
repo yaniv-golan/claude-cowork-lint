@@ -33,7 +33,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from cwlint import load_default_spec, load_spec  # noqa: E402
+from cwlint import load_default_spec  # noqa: E402
 from cwlint.diff import diff_specs, render_markdown_diff  # noqa: E402
 from cwlint.extractors import REGISTRY  # noqa: E402
 
@@ -165,11 +165,7 @@ def main() -> None:
         fragments.update(REGISTRY.run(cli_text, target="cli"))
 
     # Compose a candidate contract by merging fragments over a copy of the current spec.
-    current_dict = json.loads(
-        load_spec(
-            ROOT / "src" / "cwlint" / "_contracts" / f"cowork-v{current.claude_app_version}.json"
-        ).model_dump_json()
-    ) if False else _load_current_json()
+    current_dict = _load_current_json()
     candidate = dict(current_dict)
     candidate["claude_app_version"] = target_version
     for key, value in fragments.items():
