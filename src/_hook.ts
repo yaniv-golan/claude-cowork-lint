@@ -9,7 +9,7 @@
  */
 export interface HookCommand {
   command: string;
-  /** 1-based line in the source file, computed lazily by the caller. */
+  /** 1-based approximate line in the source file, computed eagerly via JSON-quoted substring scan. */
   approxLine: number;
 }
 
@@ -23,8 +23,9 @@ export function extractHookCommands(text: string): HookCommand[] {
   const out: HookCommand[] = [];
   const lines = text.split("\n");
   function findApproxLine(value: string): number {
+    const target = JSON.stringify(value);
     for (let i = 0; i < lines.length; i++) {
-      if (lines[i]?.includes(value)) return i + 1;
+      if (lines[i]?.includes(target)) return i + 1;
     }
     return 1;
   }

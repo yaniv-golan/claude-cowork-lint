@@ -13,11 +13,13 @@ describe("CW006", () => {
     const { root, cleanup } = makeRepo({ "hooks/hooks.json": fixture });
     try {
       const findings = CW006.check(discover(root), spec);
+      const cw006Findings = findings.filter((f) => f.ruleId === "CW006");
+      // Exactly one finding: the 'command:' field contains "WriteFile".
+      expect(cw006Findings).toHaveLength(1);
+      expect(cw006Findings[0]?.message).toContain("WriteFile");
       // The 'prompt:' field contains "Real", "Read" — must not fire.
-      expect(findings.some((f) => f.message.includes("Real"))).toBe(false);
-      expect(findings.some((f) => f.message.includes("Read"))).toBe(false);
-      // The 'command:' field contains "WriteFile" — must fire.
-      expect(findings.some((f) => f.message.includes("WriteFile"))).toBe(true);
+      expect(cw006Findings.some((f) => f.message.includes("Real"))).toBe(false);
+      expect(cw006Findings.some((f) => f.message.includes("Read"))).toBe(false);
     } finally {
       cleanup();
     }
