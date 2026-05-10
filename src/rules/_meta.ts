@@ -33,11 +33,20 @@ export interface RuleMeta {
 export const RULE_META: Record<string, RuleMeta> = {
   CW001: {
     ruleId: "CW001",
+    // v1.6608.2+ contracts split the host-loop-excluded built-ins into two
+    // groups: `replacements` (Bash, WebFetch — have an `mcp__workspace__*`
+    // substitute) and `host_loop_dropped_builtins.names` (NotebookEdit, REPL,
+    // JavaScript — dropped with no substitute). CW001 reads BOTH to emit
+    // honest suggestions (replace vs. remove). On legacy v2.1.121-style
+    // contracts these anchors are absent; the rule falls back to the
+    // combined `host_loop_excluded_builtins.mcp_replacements` map via
+    // `hostLoopReplacements()`/`hostLoopDroppedBuiltins()` in `_helpers.ts`.
     contractAnchors: [
       "subagent_tool_filter.async_dispatch_allowlist.names",
       "subagent_tool_filter.drop_set.names",
       "host_loop_tool_substitution.host_loop_excluded_builtins.names",
-      "host_loop_tool_substitution.host_loop_excluded_builtins.mcp_replacements",
+      "host_loop_tool_substitution.replacements",
+      "host_loop_tool_substitution.host_loop_dropped_builtins.names",
     ],
     verifiedAgainst: "1.6608.2",
     status: "stable",
@@ -45,11 +54,16 @@ export const RULE_META: Record<string, RuleMeta> = {
   CW002: {
     ruleId: "CW002",
     // Computes the same survivor set as CW001 (host_loop + subagent gates),
-    // then asserts the surviving set contains a persistence primitive.
+    // then asserts the surviving set contains a persistence primitive. Reads
+    // the same v1.6608.2+ split (`replacements` + `host_loop_dropped_builtins`)
+    // so that host-loop-replaced names are filtered out and dropped names are
+    // removed — both via `subagentSurvivors()` in `_helpers.ts`.
     contractAnchors: [
       "subagent_tool_filter.async_dispatch_allowlist.names",
       "subagent_tool_filter.drop_set.names",
       "host_loop_tool_substitution.host_loop_excluded_builtins.names",
+      "host_loop_tool_substitution.replacements",
+      "host_loop_tool_substitution.host_loop_dropped_builtins.names",
     ],
     verifiedAgainst: "1.6608.2",
     status: "stable",

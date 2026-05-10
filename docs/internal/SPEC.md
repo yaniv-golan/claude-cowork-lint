@@ -184,14 +184,23 @@ Four components, each ships independently:
       "filter_fn_symbol_v1_6259_1": "PTi"
     },
     "host_loop_excluded_builtins": {
-      "_description": "Built-in tool names that the desktop EXPLICITLY EXCLUDES from registration in Cowork mode. These are the names the desktop bundle considers 'unsafe to run on the host loop'. Each gets an MCP replacement.",
+      "_description": "Built-in tool names that the desktop EXPLICITLY EXCLUDES from registration in Cowork mode. These are the names the desktop bundle considers 'unsafe to run on the host loop'. v1.6608.2 splits these into two disjoint sub-sets: `replacements` (MCP substitute registered) and `host_loop_dropped_builtins` (no substitute). Older contracts use the combined `mcp_replacements` map only.",
       "names": ["Bash", "NotebookEdit", "REPL", "JavaScript", "WebFetch"],
-      "symbol_v1_6259_1": "jie",
+      "symbol_v1_6608_2": "jie",
       "mcp_replacements": {
         "Bash": "mcp__workspace__bash",
         "WebFetch": "mcp__workspace__web_fetch",
-        "_note_others": "NotebookEdit, REPL, JavaScript replacements not yet traced; likely served via the cowork artifact MCP server or absent in async sub-agents (these are interactive notebook/REPL tools — meaningful only in main-loop dispatch)."
+        "_note_others": "Legacy compatibility shape — retained so older contracts keep working. v1.6608.2+ contracts also carry sibling fields `replacements` (same content, no doc keys) and `host_loop_dropped_builtins.names` (NotebookEdit, REPL, JavaScript) — verified against the desktop bundle to confirm there is no `mcp__workspace__*` substitute for those three. CW001 prefers the explicit split when available; falls back to deriving from this map otherwise."
       }
+    },
+    "replacements": {
+      "_description": "v1.6608.2+: subset of `host_loop_excluded_builtins.names` that the desktop's `workspace` MCP server replaces. WebFetch maps to `mcp__workspace__web_fetch` (snake_case), NOT `mcp__workspace__webfetch`. Source of truth for CW001/CW002 'use mcp__workspace__X' suggestions.",
+      "Bash": "mcp__workspace__bash",
+      "WebFetch": "mcp__workspace__web_fetch"
+    },
+    "host_loop_dropped_builtins": {
+      "_description": "v1.6608.2+: subset of `host_loop_excluded_builtins.names` with NO MCP replacement. CW001 suggests removal ('no Cowork equivalent') rather than a fictional `mcp__workspace__*` substitute for these names.",
+      "names": ["NotebookEdit", "REPL", "JavaScript"]
     },
     "cowork_builtin_mcp_servers": {
       "_description": "MCP server prefixes the Cowork desktop auto-registers — any tool whose name starts with `mcp__<server>__` for one of these servers is a runtime-supplied built-in, not user-authored. CW009 consumes this list to distinguish 'unregistered third-party server' (flag) from 'auto-registered Cowork built-in' (clean). Source of truth: structural enumeration of `mcp__<server>__<tool>` literals in the v1.6608.2 desktop bundle. v1.6608.2 ships 9 names; earlier internal docs only listed 3 (`workspace`, `cowork`, `cowork-onboarding`), causing CW009 to silently false-positive references to the other six.",

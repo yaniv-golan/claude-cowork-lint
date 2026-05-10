@@ -13,12 +13,33 @@ export interface NamedStringSet {
 
 export interface HostLoopExcludedBuiltins {
   names: string[];
-  mcp_replacements: Record<string, string>;
+  /**
+   * Legacy field (pre-v1.6608.2 contracts). Combined "has replacement +
+   * dropped" map. Kept for backwards-compat reads in CW001/CW002/helpers;
+   * new contracts split this into `replacements` + `host_loop_dropped_builtins`
+   * siblings on the parent `host_loop_tool_substitution`.
+   */
+  mcp_replacements?: Record<string, string>;
 }
 
 export interface HostLoopToolSubstitution {
   host_loop_safe_set: NamedStringSet;
   host_loop_excluded_builtins: HostLoopExcludedBuiltins;
+  /**
+   * v1.6608.2+: subset of `host_loop_excluded_builtins.names` that the
+   * desktop's `workspace` MCP server replaces with an `mcp__workspace__*`
+   * tool. Keys are the built-in name (e.g. `Bash`); values are the MCP
+   * replacement (e.g. `mcp__workspace__bash`). Note the JSON file may carry
+   * sibling string-valued doc keys (`_description`, `verified_against`) —
+   * consumers should ignore non-CamelCase keys defensively.
+   */
+  replacements?: Record<string, string>;
+  /**
+   * v1.6608.2+: subset of `host_loop_excluded_builtins.names` that the
+   * desktop drops with NO MCP replacement. CW001 should suggest "remove this
+   * tool" for these names rather than a fictional `mcp__workspace__*`.
+   */
+  host_loop_dropped_builtins?: NamedStringSet;
   cowork_builtin_mcp_servers?: NamedStringSet;
   renderer_dependent_extra_drops?: NamedStringSet;
 }

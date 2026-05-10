@@ -80,6 +80,6 @@ describe("loadDefaultSpec", () => {
     const spec = loadDefaultSpec();
     const excluded = spec.host_loop_tool_substitution.host_loop_excluded_builtins;
     expect(excluded.names).toContain("Bash");
-    expect(excluded.mcp_replacements.Bash).toBe("mcp__workspace__bash");
+    expect(excluded.mcp_replacements?.Bash).toBe("mcp__workspace__bash");
   });
 });

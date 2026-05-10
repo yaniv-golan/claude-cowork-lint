@@ -29,15 +29,31 @@ or `# cwlint: ignore CWxxx reason="..."`.
 The Cowork runtime applies two filters in series:
 
 1. **Desktop-side host-loop filter** — strips `Bash`, `NotebookEdit`, `REPL`,
-   `JavaScript`, `WebFetch` from registered built-ins. Replacements are
-   registered as MCP tools (`mcp__workspace__bash`, etc.).
+   `JavaScript`, `WebFetch` from registered built-ins. The desktop's
+   `workspace` MCP server registers replacements for **only two** of the five:
+   - `Bash` → `mcp__workspace__bash`
+   - `WebFetch` → `mcp__workspace__web_fetch` (snake_case, not `webfetch`)
+
+   The other three (`NotebookEdit`, `REPL`, `JavaScript`) are dropped
+   **without** any `mcp__workspace__*` substitute. CW001 reflects this split:
+   - **Replaced-without-deficit** (`Bash`, `WebFetch`) → suggestion is
+     "use `mcp__workspace__<x>` instead".
+   - **Dropped-with-no-equivalent** (`NotebookEdit`, `REPL`, `JavaScript`) →
+     suggestion is "remove this tool; Cowork has no equivalent". CW001
+     does NOT invent fictional names like `mcp__workspace__notebookedit`.
+
 2. **CLI-side async-dispatch allowlist** (`Ys_`/`LW8`) — admits 19 names plus
    anything matching `mcp__*`. The drop set (`$zH`/`M58`) overrides everything.
 
 The sub-agent survivor set is therefore:
 
 ```
-(async_dispatch_allowlist - host_loop_excluded_builtins) - drop_set + {mcp__*}
+survivors = async_dispatch_allowlist
+          - drop_set
+          - host_loop_dropped_builtins
+          - host_loop_replaced (their mcp__workspace__* counterparts pass via
+                                the mcp__ fast-path instead)
+          + {mcp__*}
 ```
 
 **v0.1 assumes any agent file under `agents/` is a sub-agent.** Top-level
@@ -49,13 +65,12 @@ repos.
 ```yaml
 # agents/reviewer.md
 ---
-tools: [Bash, Read, TaskOutput]
+tools: [Bash, NotebookEdit, TaskOutput]
 ---
 ```
 
-- `Bash` is in `async_dispatch_allowlist` but ALSO in
-  `host_loop_excluded_builtins` — the desktop strips it. Use
-  `mcp__workspace__bash`.
+- `Bash` has a replacement: use `mcp__workspace__bash`.
+- `NotebookEdit` has **no Cowork equivalent** — remove it.
 - `TaskOutput` is in `drop_set` — always stripped.
 
 ### Fix
@@ -71,11 +86,17 @@ tools: [mcp__workspace__bash, Read]
 ## CW002
 
 **Severity:** error
-**SPEC:** §subagent_tool_filter (same survivor-set logic as CW001)
+**SPEC:** §subagent_tool_filter + §host_loop_tool_substitution (same survivor-set logic as CW001)
 
 If neither `Write` nor `Edit` survives the host-loop and async-dispatch
 filters, the agent has no structured persistence path. (`mcp__workspace__bash`
 can write files via shell, but it isn't a structured persistence tool.)
+
+The survivor-set computation honours the v1.6608.2 split:
+host-loop-**replaced** built-ins (Bash, WebFetch) are filtered out of the
+plain-name survivor set — their `mcp__workspace__*` counterparts are matched
+separately via the `mcp__` fast-path; host-loop-**dropped** built-ins
+(NotebookEdit, REPL, JavaScript) are simply removed.
 
 ### Bad
 

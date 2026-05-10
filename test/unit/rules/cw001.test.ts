@@ -83,6 +83,54 @@ describe("CW001", () => {
     }
   });
 
+  it("flags WebFetch with the snake_case mcp__workspace__web_fetch replacement", () => {
+    const { root, cleanup } = makeRepo({
+      "agents/bad.md": "---\ntools: [WebFetch, Read]\n---\nx",
+    });
+    try {
+      const findings = CW001.check(discover(root), loadDefaultSpec());
+      expect(findings).toHaveLength(1);
+      const f = findings[0];
+      expect(f?.suggestion ?? "").toContain("mcp__workspace__web_fetch");
+      // Guard against a regression to lowercased camelCase (the pre-B6 bug
+      // would have produced `mcp__workspace__webfetch`).
+      expect(f?.suggestion ?? "").not.toContain("mcp__workspace__webfetch");
+    } finally {
+      cleanup();
+    }
+  });
+
+  it.each([
+    ["NotebookEdit"],
+    ["REPL"],
+    ["JavaScript"],
+  ])("flags %s with the 'no Cowork equivalent — remove' message (no fictional mcp__workspace__* suggestion)", (toolName) => {
+    const { root, cleanup } = makeRepo({
+      "agents/bad.md": `---\ntools: [${toolName}, Read]\n---\nx`,
+    });
+    try {
+      const findings = CW001.check(discover(root), loadDefaultSpec());
+      expect(findings).toHaveLength(1);
+      const f = findings[0];
+      const lowered = toolName.toLowerCase();
+      // The pre-B6 logic emitted no suggestion (mcp_replacements lookup
+      // returned undefined), then fell through to a generic "Remove" line.
+      // The fictional `mcp__workspace__<lowered>` was never emitted by the
+      // current rule, but the message also failed to explain *why*. Now
+      // the rule must explicitly say "no Cowork equivalent".
+      expect(f?.detail ?? "").toMatch(/no Cowork equivalent/i);
+      // Suggestion should clearly tell the user to remove and explain
+      // there's no equivalent — wording deliberately flexible.
+      expect(f?.suggestion ?? "").toMatch(/remove/i);
+      expect(f?.suggestion ?? "").toMatch(/no equivalent|no Cowork equivalent/i);
+      // Anti-regression: must NOT invent a non-existent MCP tool.
+      expect(f?.suggestion ?? "").not.toContain(`mcp__workspace__${lowered}`);
+      expect(f?.detail ?? "").not.toContain(`mcp__workspace__${lowered}`);
+    } finally {
+      cleanup();
+    }
+  });
+
   it("flags top-level-only tools (Task) when listed for a sub-agent", () => {
     const { root, cleanup } = makeRepo({
       "agents/bad.md": "---\ntools: [Task]\n---\nx",
