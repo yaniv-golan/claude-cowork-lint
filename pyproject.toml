@@ -88,6 +88,7 @@ ignore = [
     "PLR0915",
     "PLC0415",  # function-local imports legitimately used for lazy loading + test setup
     "TC003",    # pydantic models need runtime-resolvable type annotations
+    "RUF002",   # docstring math symbols (∖, ∪, –) are intentional
 ]
 
 [tool.ruff.lint.per-file-ignores]
