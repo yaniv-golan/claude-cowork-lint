@@ -86,11 +86,11 @@ ignore = [
     "PLR0911",
     "PLR0912",
     "PLR0915",
+    "PLC0415",  # function-local imports legitimately used for lazy loading + test setup
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["PLR2004", "S101", "ARG001", "ARG002"]
-"scripts/**" = ["T201"]
 
 [tool.mypy]
 python_version = "3.11"

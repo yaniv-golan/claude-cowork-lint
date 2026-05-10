@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/yaniv-golan/claude-cowork-lint/schemas/v0.json",
+  "title": "Cowork runtime contract (spec_version 0)",
+  "type": "object",
+  "required": [
+    "spec_version",
+    "claude_app_version",
+    "operon_core_version",
+    "extracted_at",
+    "extracted_from",
+    "subagent_tool_filter",
+    "host_loop_tool_substitution",
+    "kernel_env_passthrough",
+    "user_secrets_injection",
+    "session_kinds",
+    "bg_context_env_strip",
+    "secret_unset_list",
+    "skill_frontmatter_invariants",
+    "cli_launch_args_in_cowork"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "$schema": { "type": "string" },
+    "spec_version": { "const": "0" },
+    "claude_app_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "claude_cli_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "operon_core_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "extracted_at": { "type": "string" },
+    "extracted_from": {
+      "type": "object",
+      "required": ["asar_path", "sha256"],
+      "properties": {
+        "asar_path": { "type": "string" },
+        "sha256": { "type": "string" }
+      }
+    },
+    "subagent_tool_filter": {
+      "type": "object",
+      "required": [
+        "drop_set",
+        "non_builtin_extra_drop_set",
+        "async_dispatch_allowlist",
+        "experimental_fallback_allowlist",
+        "fork_subagent_allowlist",
+        "sync_task_tool",
+        "mcp_tools"
+      ],
+      "properties": {
+        "drop_set": { "$ref": "#/$defs/named_string_set" },
+        "non_builtin_extra_drop_set": { "$ref": "#/$defs/named_string_set" },
+        "async_dispatch_allowlist": { "$ref": "#/$defs/named_string_set" },
+        "experimental_fallback_allowlist": { "$ref": "#/$defs/named_string_set" },
+        "fork_subagent_allowlist": { "$ref": "#/$defs/named_string_set" }
+      }
+    },
+    "host_loop_tool_substitution": {
+      "type": "object",
+      "required": ["host_loop_safe_set", "host_loop_excluded_builtins"],
+      "properties": {
+        "host_loop_safe_set": { "$ref": "#/$defs/named_string_set" },
+        "host_loop_excluded_builtins": {
+          "type": "object",
+          "required": ["names", "mcp_replacements"],
+          "properties": {
+            "names": { "type": "array", "items": { "type": "string" } },
+            "mcp_replacements": {
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            }
+          }
+        },
+        "renderer_dependent_extra_drops": { "$ref": "#/$defs/named_string_set" }
+      }
+    },
+    "kernel_env_passthrough": {
+      "type": "object",
+      "required": ["allowlist", "deleted_after_filter"],
+      "properties": {
+        "allowlist": { "type": "array", "items": { "type": "string" } },
+        "deleted_after_filter": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "user_secrets_injection": {
+      "type": "object",
+      "required": ["validation"],
+      "properties": {
+        "validation": {
+          "type": "object",
+          "required": [
+            "name_regex",
+            "name_max_length",
+            "value_max_bytes",
+            "reserved_name_literals"
+          ],
+          "properties": {
+            "name_regex": { "type": "string" },
+            "name_uppercased": { "type": "boolean" },
+            "name_max_length": { "type": "integer", "minimum": 1 },
+            "value_max_bytes": { "type": "integer", "minimum": 1 },
+            "reserved_name_literals": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "session_kinds": {
+      "type": "object",
+      "required": ["recognized_values"],
+      "properties": {
+        "recognized_values": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "bg_context_env_strip": { "type": "object" },
+    "secret_unset_list": { "$ref": "#/$defs/named_string_set" },
+    "skill_frontmatter_invariants": {
+      "type": "object",
+      "required": ["required_fields", "forbidden_fields", "env_var_substitution"],
+      "properties": {
+        "required_fields": { "type": "array", "items": { "type": "string" } },
+        "forbidden_fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["field", "value", "reason"],
+            "properties": {
+              "field": { "type": "string" },
+              "value": {},
+              "reason": { "type": "string" }
+            }
+          }
+        },
+        "env_var_substitution": {
+          "type": "object",
+          "required": ["supported_form", "unsupported_form"],
+          "properties": {
+            "supported_form": { "type": "string" },
+            "unsupported_form": { "type": "string" },
+            "reason": { "type": "string" }
+          }
+        }
+      }
+    },
+    "cli_launch_args_in_cowork": {
+      "type": "object",
+      "required": ["always_passed"],
+      "properties": {
+        "always_passed": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "$defs": {
+    "named_string_set": {
+      "type": "object",
+      "required": ["names"],
+      "properties": {
+        "names": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}
