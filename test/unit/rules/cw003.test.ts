@@ -8,8 +8,10 @@ import { makeRepo } from "../../helpers.js";
 const spec = loadDefaultSpec();
 
 describe("CW003", () => {
+  // biome-ignore lint/suspicious/noTemplateCurlyInString: literal ${CLAUDE_PLUGIN_ROOT} is the runtime-substituted form CW003 expects, not a JS template placeholder
   it("clean with the supported `${...}` form (CLAUDE_PLUGIN_ROOT)", () => {
     const { root, cleanup } = makeRepo({
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: literal ${CLAUDE_PLUGIN_ROOT} is part of the SKILL.md fixture content
       "SKILL.md": "---\nuser-invocable: true\n---\nuse ${CLAUDE_PLUGIN_ROOT}/foo",
     });
     try {
@@ -19,8 +21,10 @@ describe("CW003", () => {
     }
   });
 
+  // biome-ignore lint/suspicious/noTemplateCurlyInString: literal ${CLAUDE_PLUGIN_DATA} is the runtime-substituted form CW003 expects, not a JS template placeholder
   it("clean with the supported `${...}` form (CLAUDE_PLUGIN_DATA)", () => {
     const { root, cleanup } = makeRepo({
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: literal ${CLAUDE_PLUGIN_DATA} is part of the SKILL.md fixture content
       "SKILL.md": "---\nuser-invocable: true\n---\nwrite ${CLAUDE_PLUGIN_DATA}/state.json",
     });
     try {
@@ -39,6 +43,7 @@ describe("CW003", () => {
       expect(findings).toHaveLength(1);
       expect(findings[0]?.ruleId).toBe("CW003");
       expect(findings[0]?.message).toContain("CLAUDE_PLUGIN_ROOT");
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: asserting the rule's message recommends the literal ${CLAUDE_PLUGIN_ROOT} form
       expect(findings[0]?.message).toContain("${CLAUDE_PLUGIN_ROOT}");
     } finally {
       cleanup();
@@ -59,6 +64,7 @@ describe("CW003", () => {
       expect(findings).toHaveLength(1);
       expect(findings[0]?.ruleId).toBe("CW003");
       expect(findings[0]?.message).toContain("CLAUDE_PLUGIN_DATA");
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: asserting the rule's message recommends the literal ${CLAUDE_PLUGIN_DATA} form
       expect(findings[0]?.message).toContain("${CLAUDE_PLUGIN_DATA}");
     } finally {
       cleanup();

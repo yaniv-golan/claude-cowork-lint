@@ -35,6 +35,13 @@ interface FixtureExpectation {
    * on a `command:` field but NOT on tool-like words in `prompt:` prose.
    */
   forbidden_message_substrings?: readonly string[];
+  /**
+   * Optional upper-bound on the number of findings per rule. Used to guard
+   * dedup/one-per-cue contracts: a fixture that exists to prove "this rule
+   * fires AT MOST N times" declares the bound here. Without this, a
+   * regression that multiplies findings would still satisfy `must_fire`.
+   */
+  per_rule_max?: Record<string, number>;
 }
 
 const CORPUS_DIR = join(__dirname, "..", "fixtures", "dogfood");
@@ -79,6 +86,9 @@ const EXPECTATIONS: Record<string, FixtureExpectation> = {
   "multi-cue-bash-fence.md": {
     target: "skills/ship/SKILL.md",
     must_fire: ["CW008"],
+    // Guards the B3 fix: even when multiple kernel-cue tokens appear inside
+    // a single bash fence, CW008 must report it at most once.
+    per_rule_max: { CW008: 1 },
   },
   "agents-with-shorthand-tools.md": {
     target: "agents/shorthand.md",
@@ -89,7 +99,7 @@ const EXPECTATIONS: Record<string, FixtureExpectation> = {
 describe("dogfood corpus regression suite", () => {
   it("corpus directory is exhaustively covered by EXPECTATIONS", () => {
     const onDisk = readdirSync(CORPUS_DIR)
-      .filter((n) => n !== "README.md")
+      .filter((n) => (n.endsWith(".md") || n.endsWith(".json")) && n !== "README.md")
       .sort();
     const declared = Object.keys(EXPECTATIONS).sort();
     expect(declared, "every fixture file must have an EXPECTATIONS entry").toEqual(onDisk);
@@ -118,6 +128,13 @@ describe("dogfood corpus regression suite", () => {
               report.findings.filter((f) => f.ruleId === ruleId),
             )}`,
           ).toBe(false);
+        }
+        for (const [ruleId, max] of Object.entries(exp.per_rule_max ?? {})) {
+          const count = report.findings.filter((f) => f.ruleId === ruleId).length;
+          expect(
+            count,
+            `expected at most ${max} ${ruleId} findings on ${fixture}, got ${count}`,
+          ).toBeLessThanOrEqual(max);
         }
         for (const substr of exp.forbidden_message_substrings ?? []) {
           const hit = report.findings.find((f) => f.message.includes(substr));
