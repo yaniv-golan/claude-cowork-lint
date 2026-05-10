@@ -1,0 +1,41 @@
+{
+  "$comment": "Modeled after a real plugin (trailofbits/fp-check). Declares several events known broken under Cowork's --setting-sources=user gate, including SessionStart, Stop, and UserPromptSubmit. CW011 should fire once for the file; CW012 should fire once per broken event.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo session-started",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo session-stopped",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo prompt-submitted",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
