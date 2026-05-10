@@ -98,6 +98,7 @@ program
         spec.subagent_tool_filter.async_dispatch_allowlist.names.length,
       ],
       ["kernel_env_passthrough_allowlist", spec.kernel_env_passthrough.allowlist.length],
+      ["secret_unset_list", spec.secret_unset_list.names.length],
     ];
     const width = Math.max(...lines.map(([k]) => k.length));
     for (const [k, v] of lines) {
