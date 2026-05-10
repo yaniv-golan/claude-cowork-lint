@@ -1,17 +1,18 @@
 /**
  * Unit tests for the text/json/sarif formatters.
  *
- * Ported line-for-line from `_legacy/python/tests/unit/test_output.py`. The
- * Node implementations are expected to produce byte-identical JSON/SARIF
- * envelopes (modulo `cwlint_version`) versus the Python originals.
+ * Originally ported line-for-line from `_legacy/python/tests/unit/test_output.py`;
+ * the JSON checks now also cover the v0.2.0 envelope wrapper (`schemaVersion`
+ * + `finishedAt`) and the new `list-rules` / `spec-info` JSON formatters.
  */
 
 import { describe, expect, it } from "vitest";
 
 import type { Finding, Report, Severity } from "../../src/findings.js";
-import { formatJson } from "../../src/output/json.js";
+import { formatJson, formatSpecInfoJson, wrapEnvelope } from "../../src/output/json.js";
 import { formatSarif } from "../../src/output/sarif.js";
 import { formatText } from "../../src/output/text.js";
+import { loadDefaultSpec } from "../../src/spec.js";
 
 function makeReport(findings: Finding[] = []): Report {
   return {
@@ -64,6 +65,27 @@ describe("formatJson", () => {
   it("is JSON-serialisable", () => {
     const payload = formatJson(makeReport([makeFinding()]));
     expect(() => JSON.stringify(payload)).not.toThrow();
+  });
+});
+
+describe("wrapEnvelope", () => {
+  it("emits schemaVersion + ISO finishedAt before the payload", () => {
+    const env = wrapEnvelope({ hello: "world" });
+    expect(env.schemaVersion).toBe("0.1");
+    expect(env.finishedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    expect(env.hello).toBe("world");
+    // Success envelopes must NOT carry an `ok` field — absence ≡ success.
+    expect("ok" in env).toBe(false);
+  });
+});
+
+describe("formatSpecInfoJson", () => {
+  it("exposes the spec metadata + structural counts object", () => {
+    const payload = formatSpecInfoJson(loadDefaultSpec());
+    expect(payload.spec_version).toBe("0");
+    expect(payload.claude_app_version).toBe("1.6608.2");
+    expect(payload.counts.host_loop_safe_set).toBeGreaterThan(0);
+    expect(payload.counts.subagent_async_dispatch_allowlist).toBe(19);
   });
 });
 

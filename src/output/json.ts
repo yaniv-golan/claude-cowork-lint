@@ -1,6 +1,15 @@
 /**
  * JSON formatter — stable public shape documented in `docs/CLI.md`.
  *
+ * Every `--format json` payload emitted by cwlint is wrapped in a small
+ * envelope so downstream consumers can pin against `schemaVersion`:
+ *
+ *   { schemaVersion: "0.1", finishedAt: <ISO 8601>, ...payload }
+ *
+ * Success envelopes intentionally omit `ok`. Absence of `ok` ≡ success;
+ * commit 2 will layer `ok: false` onto an `ErrorEnvelope` shape. Don't add
+ * `ok: true` here.
+ *
  * Snake_case keys (mirroring the Python original) and a fixed top-level
  * envelope so downstream consumers can pin against the schema. Driven by
  * `summarise()` for the counts, and `VERSION` from `src/about.ts` for the
@@ -8,8 +17,33 @@
  */
 
 import { VERSION } from "../about.js";
+import type { DoctorReport } from "../doctor.js";
 import type { Report } from "../findings.js";
 import { summarise } from "../findings.js";
+import type { Spec } from "../spec.js";
+
+/** Current envelope schema version. Bump only on a breaking shape change. */
+export const SCHEMA_VERSION = "0.1";
+
+export interface Envelope {
+  schemaVersion: string;
+  finishedAt: string;
+}
+
+/**
+ * Wrap an arbitrary success payload in the cwlint JSON envelope.
+ *
+ * `schemaVersion` and `finishedAt` are emitted first so consumers piping
+ * through `jq '.schemaVersion'` see the version up front without scanning
+ * past large arrays.
+ */
+export function wrapEnvelope<T extends object>(payload: T): Envelope & T {
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    finishedAt: new Date().toISOString(),
+    ...payload,
+  };
+}
 
 export interface JsonFinding {
   rule_id: string;
@@ -29,6 +63,14 @@ export interface JsonReport {
   summary: { error: number; warn: number; info: number };
 }
 
+/**
+ * Build the inner `check` JSON payload (no envelope). Exists as a standalone
+ * function so unit tests can keep asserting on the documented snake_case
+ * shape without re-reading `schemaVersion`/`finishedAt` on every call.
+ *
+ * Callers that emit to stdout should pipe through `wrapEnvelope()`; the CLI
+ * does this in `src/cli.ts`.
+ */
 export function formatJson(report: Report): JsonReport {
   return {
     cwlint_version: VERSION,
@@ -45,4 +87,50 @@ export function formatJson(report: Report): JsonReport {
     })),
     summary: summarise(report),
   };
+}
+
+export interface JsonSpecInfo {
+  spec_version: string;
+  claude_app_version: string;
+  operon_core_version: string;
+  counts: {
+    host_loop_safe_set: number;
+    host_loop_excluded_builtins: number;
+    subagent_drop_set: number;
+    subagent_async_dispatch_allowlist: number;
+    kernel_env_passthrough_allowlist: number;
+    secret_unset_list: number;
+  };
+}
+
+/**
+ * Inner payload for `spec-info --format json`. Mirrors the counts the
+ * text-mode formatter prints, exposed structurally under `counts`.
+ */
+export function formatSpecInfoJson(spec: Spec): JsonSpecInfo {
+  return {
+    spec_version: spec.spec_version,
+    claude_app_version: spec.claude_app_version,
+    operon_core_version: spec.operon_core_version,
+    counts: {
+      host_loop_safe_set: spec.host_loop_tool_substitution.host_loop_safe_set.names.length,
+      host_loop_excluded_builtins:
+        spec.host_loop_tool_substitution.host_loop_excluded_builtins.names.length,
+      subagent_drop_set: spec.subagent_tool_filter.drop_set.names.length,
+      subagent_async_dispatch_allowlist:
+        spec.subagent_tool_filter.async_dispatch_allowlist.names.length,
+      kernel_env_passthrough_allowlist: spec.kernel_env_passthrough.allowlist.length,
+      secret_unset_list: spec.secret_unset_list.names.length,
+    },
+  };
+}
+
+/**
+ * Wrap a `runDoctor()` report in the envelope. The schema stays FLAT
+ * (`{schemaVersion, finishedAt, spec_version, claude_app_version, rules}`)
+ * — do NOT nest the doctor payload under a `report` key. That shape was
+ * considered and explicitly rejected in the v0.2.0 design review.
+ */
+export function formatDoctorJson(report: DoctorReport): DoctorReport {
+  return report;
 }
