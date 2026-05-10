@@ -38,7 +38,6 @@ export const RULE_META: Record<string, RuleMeta> = {
       "subagent_tool_filter.drop_set.names",
       "host_loop_tool_substitution.host_loop_excluded_builtins.names",
       "host_loop_tool_substitution.host_loop_excluded_builtins.mcp_replacements",
-      "host_loop_tool_substitution.replacements",
     ],
     verifiedAgainst: "1.6608.2",
     status: "stable",

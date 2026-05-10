@@ -34,6 +34,25 @@ export interface DoctorReport {
   rules: DoctorRuleReport[];
 }
 
+/**
+ * Compute a rule's `overall` doctor status from its lifecycle status and
+ * anchor-resolution results.
+ *
+ * Precedence (matches the runDoctor implementation; exported so tests can
+ * exercise the full truth-table without round-tripping through a synthetic
+ * spec):
+ *   1. status: "deprecated"   → "deprecated" (regardless of anchors)
+ *   2. all anchors resolved   → "ok"
+ *   3. otherwise              → "stale"
+ */
+export function computeOverall(
+  status: RuleMeta["status"],
+  allAnchorsResolved: boolean,
+): DoctorRuleReport["overall"] {
+  if (status === "deprecated") return "deprecated";
+  return allAnchorsResolved ? "ok" : "stale";
+}
+
 export function runDoctor(spec: Spec): DoctorReport {
   const rules: DoctorRuleReport[] = [];
   for (const meta of Object.values(RULE_META)) {
@@ -42,8 +61,7 @@ export function runDoctor(spec: Spec): DoctorReport {
       resolved: resolvePath(spec, path) !== undefined,
     }));
     const allResolved = anchors.every((a) => a.resolved);
-    const overall: DoctorRuleReport["overall"] =
-      meta.status === "deprecated" ? "deprecated" : allResolved ? "ok" : "stale";
+    const overall = computeOverall(meta.status, allResolved);
     rules.push({
       ruleId: meta.ruleId,
       status: meta.status,

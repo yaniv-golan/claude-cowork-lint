@@ -130,14 +130,22 @@ program
     const spec = opts.spec ? loadSpec(opts.spec) : loadDefaultSpec();
     const report = runDoctor(spec);
 
+    // Width of the `overall` column. Longest possible value is "deprecated"
+    // (10 chars); pad to 11 for one space of breathing room.
+    const OVERALL_WIDTH = 11;
+    // Exit non-zero only when at least one rule is `stale` (anchor missing).
+    // `deprecated` is intentional/known and does NOT trip CI — that's the
+    // whole point of the lifecycle bit.
+    const hasStale = report.rules.some((r) => r.overall === "stale");
+
     if (fmt === "json") {
       process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-      return;
+      process.exit(hasStale ? 1 : 0);
     }
     for (const r of report.rules) {
       const icon = r.overall === "ok" ? "✓" : r.overall === "deprecated" ? "—" : "✗";
       process.stdout.write(
-        `${icon} ${r.ruleId}  ${r.overall.padEnd(11)}  verified ${r.verified_against}  status ${r.status}\n`,
+        `${icon} ${r.ruleId}  ${r.overall.padEnd(OVERALL_WIDTH)}  verified ${r.verified_against}  status ${r.status}\n`,
       );
       if (r.overall === "stale") {
         for (const a of r.anchors.filter((x) => !x.resolved)) {
@@ -145,6 +153,7 @@ program
         }
       }
     }
+    process.exit(hasStale ? 1 : 0);
   });
 
 program

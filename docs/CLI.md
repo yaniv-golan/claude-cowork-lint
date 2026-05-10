@@ -59,6 +59,21 @@ Print metadata about the loaded contract: spec version, Claude.app version,
 Operon-Core version, and key allowlist sizes. One key per line, two-column
 form. Useful for confirming what runtime version `cwlint` is checking against.
 
+### `cwlint doctor [--spec <path>] [-f text|json]`
+
+Audit every shipped rule's declared contract anchors (`src/rules/_meta.ts`)
+against the loaded contract; report rules whose anchors no longer resolve
+(`stale`) or whose lifecycle status is `deprecated`. Designed to be wired
+into CI so a contract bump that drops a field surfaces immediately.
+
+**Exit codes:**
+
+| Code | Meaning |
+|---|---|
+| `0` | All rules `ok` or `deprecated`. |
+| `1` | At least one rule is `stale` (a declared anchor failed to resolve). `deprecated` rules do NOT trigger exit 1 — that status is intentional/known. |
+| `2` | Unknown `--format` value, or runtime/uncaught exception. |
+
 ### `cwlint extract <bundle> [--target desktop|cli]`
 
 Extract contract fragments from a Claude.app or CLI bundle (AST-based, via

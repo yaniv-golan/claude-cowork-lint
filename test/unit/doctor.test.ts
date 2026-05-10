@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { runDoctor } from "../../src/doctor.js";
+import { computeOverall, runDoctor } from "../../src/doctor.js";
 import { loadDefaultSpec, type Spec } from "../../src/spec.js";
 
 describe("cwlint doctor", () => {
@@ -19,27 +19,23 @@ describe("cwlint doctor", () => {
     expect(stale, `stale rules: ${JSON.stringify(stale, null, 2)}`).toEqual([]);
   });
 
-  it("status=deprecated takes precedence over anchor resolution in overall", () => {
-    // Synthesise a spec where skill_frontmatter_invariants is wiped — that
-    // would make CW003/CW004/CW005 stale. Then verify that if we marked any
-    // of them deprecated, the overall would be "deprecated" instead of
-    // "stale". We don't mutate RULE_META (tests stay decoupled from rule
-    // lifecycle changes), so we verify the precedence by inspecting the
-    // report directly.
-    const spec = loadDefaultSpec();
-    const report = runDoctor(spec);
-    for (const rule of report.rules) {
-      if (rule.status === "deprecated") {
-        expect(rule.overall).toBe("deprecated");
-      }
-    }
-    // Equivalent property check: anchor-resolved rules with a non-deprecated
-    // status MUST be "ok", and anchor-unresolved rules with a non-deprecated
-    // status MUST be "stale".
-    for (const rule of report.rules) {
-      if (rule.status === "deprecated") continue;
-      const allResolved = rule.anchors.every((a) => a.resolved);
-      expect(rule.overall).toBe(allResolved ? "ok" : "stale");
+  it("computeOverall enforces deprecated > anchor-resolution precedence", () => {
+    // Constructive truth-table for the precedence logic. Avoids depending on
+    // any rule in RULE_META actually being deprecated today — the previous
+    // form iterated `report.rules` filtering for status==="deprecated" and
+    // passed by vacuous truth when no such rule existed.
+    const cases: Array<{
+      status: "stable" | "deprecated" | "experimental";
+      allResolved: boolean;
+      expected: "ok" | "stale" | "deprecated";
+    }> = [
+      { status: "deprecated", allResolved: true, expected: "deprecated" },
+      { status: "deprecated", allResolved: false, expected: "deprecated" },
+      { status: "stable", allResolved: true, expected: "ok" },
+      { status: "stable", allResolved: false, expected: "stale" },
+    ];
+    for (const c of cases) {
+      expect(computeOverall(c.status, c.allResolved), JSON.stringify(c)).toBe(c.expected);
     }
   });
 
