@@ -1,22 +1,14 @@
 /**
- * Tests for CW002, CW003, CW004, CW005, CW006, CW010, CW011, CW012.
- * (CW008 lives in `cw008.test.ts`; CW009 lives in `cw009.test.ts`.)
+ * Tests for CW002, CW004, CW005, CW006, CW010, CW011, CW012.
+ * (CW003 lives in `cw003.test.ts`; CW008 lives in `cw008.test.ts`;
+ * CW009 lives in `cw009.test.ts`.)
  * Ported from `_legacy/python/tests/unit/rules/test_other_rules.py`.
  */
 
 import { describe, expect, it } from "vitest";
 
 import { discover } from "../../../src/discovery.js";
-import {
-  CW002,
-  CW003,
-  CW004,
-  CW005,
-  CW006,
-  CW010,
-  CW011,
-  CW012,
-} from "../../../src/rules/index.js";
+import { CW002, CW004, CW005, CW006, CW010, CW011, CW012 } from "../../../src/rules/index.js";
 import { loadDefaultSpec } from "../../../src/spec.js";
 import { makeRepo } from "../../helpers.js";
 
@@ -68,59 +60,7 @@ describe("CW002", () => {
   });
 });
 
-// ---------- CW003 ----------
-
-describe("CW003", () => {
-  it("clean with the supported `${...}` form", () => {
-    const { root, cleanup } = makeRepo({
-      "SKILL.md": "---\nuser-invocable: true\n---\nuse ${CLAUDE_PLUGIN_ROOT}/foo",
-    });
-    try {
-      expect(CW003.check(discover(root), spec)).toEqual([]);
-    } finally {
-      cleanup();
-    }
-  });
-
-  it("flags the bare `$VAR` form", () => {
-    const { root, cleanup } = makeRepo({
-      "SKILL.md": "---\nuser-invocable: true\n---\nuse $CLAUDE_PLUGIN_ROOT/foo",
-    });
-    try {
-      const findings = CW003.check(discover(root), spec);
-      expect(findings).toHaveLength(1);
-      expect(findings[0]?.ruleId).toBe("CW003");
-    } finally {
-      cleanup();
-    }
-  });
-
-  it("does not match a longer identifier (`$CLAUDE_PLUGIN_ROOT_OTHER`)", () => {
-    const { root, cleanup } = makeRepo({
-      "SKILL.md": "---\nuser-invocable: true\n---\nuse $CLAUDE_PLUGIN_ROOT_OTHER/foo",
-    });
-    try {
-      expect(CW003.check(discover(root), spec)).toEqual([]);
-    } finally {
-      cleanup();
-    }
-  });
-
-  it("respects suppression markers", () => {
-    const body =
-      "---\n" +
-      "user-invocable: true\n" +
-      "---\n" +
-      '<!-- cwlint: ignore CW003 reason="intentional" -->\n' +
-      "$CLAUDE_PLUGIN_ROOT/foo\n";
-    const { root, cleanup } = makeRepo({ "SKILL.md": body });
-    try {
-      expect(CW003.check(discover(root), spec)).toEqual([]);
-    } finally {
-      cleanup();
-    }
-  });
-});
+// CW003 lives in `cw003.test.ts` (extracted in Task B7).
 
 // ---------- CW004 ----------
 

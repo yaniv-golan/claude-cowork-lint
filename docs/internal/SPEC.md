@@ -377,7 +377,8 @@ Four components, each ships independently:
     "env_var_substitution": {
       "supported_form": "${CLAUDE_PLUGIN_ROOT}",
       "unsupported_form": "$CLAUDE_PLUGIN_ROOT",
-      "reason": "Bare form depends on shell-expansion timing not guaranteed for skill subprocesses."
+      "reason": "Bare form depends on shell-expansion timing not guaranteed for skill subprocesses.",
+      "_note_data_env_var": "Round-5 binary verification (Claude.app 1.6608.2) confirmed the runtime substitutes ${CLAUDE_PLUGIN_DATA} via an identical regex to ${CLAUDE_PLUGIN_ROOT} (`H.replace(/\\$\\{CLAUDE_PLUGIN_ROOT\\}/g, …)` and `K.replace(/\\$\\{CLAUDE_PLUGIN_DATA\\}/g, …)` in the desktop bundle), and both env vars are set in the same place on the hook-execution env (`CLAUDE_PLUGIN_ROOT: _.path, CLAUDE_PLUGIN_DATA: oqH(_.source)`). The bare-vs-braced silent-failure semantics are identical for both, so CW003 flags `$CLAUDE_PLUGIN_DATA` alongside `$CLAUDE_PLUGIN_ROOT`. `${user_config.*}` is also substituted by the runtime but uses a different (parameter-interpolation) path; it is NOT covered by this invariant."
     }
   },
 
@@ -515,7 +516,7 @@ for finding in report.findings:
 |---|---|---|
 | `CW001` | error | Agent's `tools:` declaration includes a tool not in async-dispatch allowlist. |
 | `CW002` | error | Agent has neither `Write` nor `Edit` after async-dispatch filter (no persistence path). |
-| `CW003` | warn | SKILL.md frontmatter uses bare `$CLAUDE_PLUGIN_ROOT` instead of `${CLAUDE_PLUGIN_ROOT}`. |
+| `CW003` | warn | SKILL.md frontmatter uses bare `$CLAUDE_PLUGIN_ROOT` / `$CLAUDE_PLUGIN_DATA` instead of the braced `${...}` form. |
 | `CW004` | error | SKILL.md frontmatter has `disable-model-invocation: true`. |
 | `CW005` | warn | SKILL.md missing `user-invocable: true` in frontmatter. |
 | `CW006` | warn | Hook command references a tool name not in any allowlist (typo detector). |

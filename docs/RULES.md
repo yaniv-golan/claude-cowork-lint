@@ -8,7 +8,7 @@ or `# cwlint: ignore CWxxx reason="..."`.
 |---|---|---|
 | [CW001](#cw001) | error | Tool will not survive Cowork's runtime gates |
 | [CW002](#cw002) | error | Agent has no remaining persistence path |
-| [CW003](#cw003) | warn  | Bare `$CLAUDE_PLUGIN_ROOT` instead of `${...}` |
+| [CW003](#cw003) | warn  | Bare `$CLAUDE_PLUGIN_ROOT` / `$CLAUDE_PLUGIN_DATA` instead of `${...}` |
 | [CW004](#cw004) | error | `disable-model-invocation: true` |
 | [CW005](#cw005) | warn  | `user-invocable: false` explicitly opts out |
 | [CW006](#cw006) | warn  | Hook command typos a known tool name |
@@ -121,20 +121,30 @@ tools: [Read, Grep, TodoWrite, Write]
 **Severity:** warn
 **SPEC:** §skill_frontmatter_invariants.env_var_substitution
 
-Cowork's runtime requires `${CLAUDE_PLUGIN_ROOT}` (with braces). Bare
-`$CLAUDE_PLUGIN_ROOT` depends on shell-expansion timing not guaranteed for
-skill subprocesses.
+Cowork's runtime requires the braced form (`${CLAUDE_PLUGIN_ROOT}`,
+`${CLAUDE_PLUGIN_DATA}`). The desktop bundle substitutes both via a literal
+regex on `\$\{CLAUDE_PLUGIN_ROOT\}` / `\$\{CLAUDE_PLUGIN_DATA\}` before
+launching the skill's subprocess; the bare forms (`$CLAUDE_PLUGIN_ROOT`,
+`$CLAUDE_PLUGIN_DATA`) only work when the underlying shell also happens to
+inherit the env var, and silently expand to the empty string in argv
+contexts that don't spawn a shell.
+
+Note: `${user_config.*}` is also substituted by the runtime but uses a
+different (parameter-interpolation) code path and is intentionally NOT
+flagged by this rule.
 
 ### Bad
 
 ```text
 Reference: $CLAUDE_PLUGIN_ROOT/scripts/setup.sh
+Cache:     $CLAUDE_PLUGIN_DATA/state.json
 ```
 
 ### Fix
 
 ```text
 Reference: ${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh
+Cache:     ${CLAUDE_PLUGIN_DATA}/state.json
 ```
 
 ---
