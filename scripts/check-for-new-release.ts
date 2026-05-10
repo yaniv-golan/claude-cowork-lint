@@ -29,7 +29,7 @@
  * Exits 0 always (use the report's `action` field to gate downstream steps).
  */
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -158,10 +158,24 @@ function readAppVersion(appPath: string): string | null {
 }
 
 function extractAsar(asarPath: string, dest: string): boolean {
+  // Wipe any partial leftover from a prior failed run before extracting —
+  // otherwise a half-extracted tree at `dest` could leave stale `.vite/build/index.js`
+  // around and we'd silently parse the wrong bundle.
+  try {
+    rmSync(dest, { recursive: true, force: true });
+  } catch {
+    // best effort
+  }
   try {
     asar.extractAll(asarPath, dest);
     return true;
   } catch (err) {
+    // Clean up partial extraction on failure so the next run starts fresh.
+    try {
+      rmSync(dest, { recursive: true, force: true });
+    } catch {
+      // best effort
+    }
     process.stderr.write(
       `asar extraction failed: ${err instanceof Error ? err.message : String(err)}\n`,
     );

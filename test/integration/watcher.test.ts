@@ -45,6 +45,14 @@ describe("watcher script", () => {
       // diff.md exists and starts with the expected header
       const diffMd = readFileSync(join(outDir, "diff.md"), "utf-8");
       expect(diffMd).toMatch(/^# Cowork contract:/);
+      // Candidate contract was written, has the bumped version, and preserves
+      // unchanged top-level fields from the bundled current contract.
+      const candidatePath = join(outDir, `cowork-v${report.target_version}.json`);
+      const candidate = JSON.parse(readFileSync(candidatePath, "utf-8"));
+      expect(candidate.claude_app_version).toBe(report.target_version);
+      expect(candidate.spec_version).toBe("0");
+      expect(candidate.host_loop_tool_substitution).toBeDefined();
+      expect(candidate.host_loop_tool_substitution.host_loop_safe_set.names).toContain("Task");
     } finally {
       rmSync(outDir, { recursive: true, force: true });
     }
