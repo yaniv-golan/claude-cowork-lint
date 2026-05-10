@@ -52,7 +52,11 @@ export const CW001: Rule = {
           detail = "name is in the always-dropped set; never reaches a sub-agent.";
           suggestion = `Remove '${tool}' from this agent's tools.`;
         } else if (hostReplaced.has(tool)) {
-          const repl = replacements[tool] as string;
+          const repl = replacements[tool];
+          // Unreachable in practice (`hostReplaced` is derived from
+          // `Object.keys(replacements)`), but the falsy check satisfies
+          // `noUncheckedIndexedAccess` without an `as` cast.
+          if (!repl) continue;
           detail = `excluded from registered built-ins in Cowork mode; use '${repl}' instead.`;
           suggestion = `Replace '${tool}' with '${repl}' in this agent's tools.`;
         } else if (droppedNoReplacement.has(tool)) {

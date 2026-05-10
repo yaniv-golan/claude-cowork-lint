@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 
 import { discover } from "../../../src/discovery.js";
 import { ALL_RULES, CW001 } from "../../../src/rules/index.js";
-import { loadDefaultSpec } from "../../../src/spec.js";
+import { loadDefaultSpec, loadSpec } from "../../../src/spec.js";
 import { makeRepo } from "../../helpers.js";
 
 describe("ALL_RULES (registry)", () => {
@@ -181,6 +181,38 @@ describe("CW001", () => {
     const { root, cleanup } = makeRepo({ "agents/foo.md": body });
     try {
       expect(CW001.check(discover(root), loadDefaultSpec())).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
+});
+
+describe("CW001 — legacy cowork-v2.1.121.json contract", () => {
+  it("flags Bash with replacement suggestion", () => {
+    const legacySpec = loadSpec("contracts/cowork-v2.1.121.json");
+    const { root, cleanup } = makeRepo({
+      "agents/x.md": "---\ntools: [Bash]\n---\nbody",
+    });
+    try {
+      const findings = CW001.check(discover(root), legacySpec);
+      const cw001 = findings.filter((f) => f.ruleId === "CW001");
+      expect(cw001).toHaveLength(1);
+      expect(cw001[0]?.suggestion ?? "").toContain("mcp__workspace__bash");
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("flags NotebookEdit with 'no Cowork equivalent' on legacy contract via fallback", () => {
+    const legacySpec = loadSpec("contracts/cowork-v2.1.121.json");
+    const { root, cleanup } = makeRepo({
+      "agents/x.md": "---\ntools: [NotebookEdit]\n---\nbody",
+    });
+    try {
+      const findings = CW001.check(discover(root), legacySpec);
+      const cw001 = findings.filter((f) => f.ruleId === "CW001");
+      expect(cw001).toHaveLength(1);
+      expect(cw001[0]?.detail ?? "").toMatch(/no Cowork equivalent|no equivalent/i);
     } finally {
       cleanup();
     }

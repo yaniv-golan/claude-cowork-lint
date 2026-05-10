@@ -31,11 +31,12 @@ export function hostLoopReplacements(spec: Spec): Record<string, string> {
   const raw = h.replacements ?? h.host_loop_excluded_builtins.mcp_replacements ?? {};
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(raw)) {
-    // Skip doc keys (`_description`, `verified_against`, `_note_others`)
-    // and any non-string value. The replacement-name convention is
-    // CamelCase built-in → snake_case mcp__workspace__* — both string.
     if (typeof v !== "string") continue;
-    if (k.startsWith("_")) continue;
+    // Replacement keys follow the CamelCase built-in-tool naming convention
+    // (Bash, WebFetch, NotebookEdit, REPL, JavaScript). Filter to that pattern
+    // to exclude doc-only keys like `_description`, `_note_others`, and
+    // `verified_against` that may appear at the same level in the contract.
+    if (!/^[A-Z][A-Za-z]*$/.test(k)) continue;
     out[k] = v;
   }
   return out;
