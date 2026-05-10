@@ -39,9 +39,7 @@ def format_sarif(report: Report) -> dict[str, Any]:
                 "tool": {
                     "driver": {
                         "name": "claude-cowork-lint",
-                        "informationUri": (
-                            "https://github.com/yaniv-golan/claude-cowork-lint"
-                        ),
+                        "informationUri": ("https://github.com/yaniv-golan/claude-cowork-lint"),
                         "version": __version__,
                         "rules": list(rules_seen.values()),
                     }

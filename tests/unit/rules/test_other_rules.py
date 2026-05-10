@@ -49,9 +49,7 @@ def test_cw002_mcp_workspace_bash_does_not_count(
     make_skill_repo: Callable[[dict[str, str]], Path],
 ) -> None:
     """Shell tools aren't a structured persistence path."""
-    repo = make_skill_repo(
-        {"agents/a.md": "---\ntools: [Read, mcp__workspace__bash]\n---\nx"}
-    )
+    repo = make_skill_repo({"agents/a.md": "---\ntools: [Read, mcp__workspace__bash]\n---\nx"})
     findings = list(CW002NoPersistencePath().check(discover(repo), load_default_spec()))
     assert len(findings) == 1
     assert findings[0].rule_id == "CW002"
@@ -91,7 +89,7 @@ def test_cw003_suppression(make_skill_repo: Callable[[dict[str, str]], Path]) ->
         "---\n"
         "user-invocable: true\n"
         "---\n"
-        "<!-- cwlint: ignore CW003 reason=\"intentional\" -->\n"
+        '<!-- cwlint: ignore CW003 reason="intentional" -->\n'
         "$CLAUDE_PLUGIN_ROOT/foo\n"
     )
     repo = make_skill_repo({"SKILL.md": body})
@@ -296,10 +294,7 @@ def test_cw010_bad_regex(make_skill_repo: Callable[[dict[str, str]], Path]) -> N
 
 
 def test_cw010_reserved_name(make_skill_repo: Callable[[dict[str, str]], Path]) -> None:
-    payload = (
-        '{"name":"x","version":"0.1.0",'
-        '"userConfig":{"ANTHROPIC_API_KEY":{"type":"string"}}}'
-    )
+    payload = '{"name":"x","version":"0.1.0","userConfig":{"ANTHROPIC_API_KEY":{"type":"string"}}}'
     repo = make_skill_repo({".claude-plugin/plugin.json": payload})
     findings = list(CW010UserSecretName().check(discover(repo), load_default_spec()))
     assert len(findings) == 1

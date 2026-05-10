@@ -49,9 +49,7 @@ class CW006UnknownToolName(Rule):
                         continue
                     if suppressed(sups, self.rule_id, lineno):
                         continue
-                    msg = (
-                        f"unknown tool name {candidate!r} — did you mean {suggestions[0]!r}?"
-                    )
+                    msg = f"unknown tool name {candidate!r} — did you mean {suggestions[0]!r}?"
                     yield Finding(
                         rule_id=self.rule_id,
                         severity=self.severity,

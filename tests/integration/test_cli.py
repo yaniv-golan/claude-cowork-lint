@@ -70,9 +70,7 @@ def test_check_ignore_skips_rule(
 ) -> None:
     body = "---\nuser-invocable: true\ndisable-model-invocation: true\n---\nbody"
     repo = make_skill_repo({"SKILL.md": body})
-    result = CliRunner().invoke(
-        app, ["check", str(repo), "--ignore", "CW004", "--strict"]
-    )
+    result = CliRunner().invoke(app, ["check", str(repo), "--ignore", "CW004", "--strict"])
     assert result.exit_code == 0
 
 

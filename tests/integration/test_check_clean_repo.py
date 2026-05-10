@@ -14,20 +14,12 @@ if TYPE_CHECKING:
 
 _CLEAN_REPO_FILES = {
     "SKILL.md": (
-        "---\n"
-        "user-invocable: true\n"
-        "---\n"
-        "# Hello\n"
-        "\n"
-        "Use ${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh.\n"
+        "---\nuser-invocable: true\n---\n# Hello\n\nUse ${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh.\n"
     ),
     ".claude-plugin/plugin.json": (
-        '{"name":"my-plugin","version":"0.1.0",'
-        '"userConfig":{"MY_TOKEN":{"type":"string"}}}'
+        '{"name":"my-plugin","version":"0.1.0","userConfig":{"MY_TOKEN":{"type":"string"}}}'
     ),
-    "agents/reviewer.md": (
-        "---\ntools: [Read, Write, Grep, Glob, TodoWrite]\n---\nbody"
-    ),
+    "agents/reviewer.md": ("---\ntools: [Read, Write, Grep, Glob, TodoWrite]\n---\nbody"),
     ".mcp.json": '{"mcpServers": {"workspace": {}}}',
     "commands/foo.md": "---\nallowed-tools: [Read]\n---\nbody",
 }

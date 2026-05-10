@@ -58,9 +58,7 @@ def test_top_level_only_tool_flagged_for_subagent(
 
 
 def test_mcp_tools_always_pass(make_skill_repo: Callable[[dict[str, str]], Path]) -> None:
-    repo = make_skill_repo(
-        {"agents/foo.md": "---\ntools: [mcp__workspace__bash, Read]\n---\nx"}
-    )
+    repo = make_skill_repo({"agents/foo.md": "---\ntools: [mcp__workspace__bash, Read]\n---\nx"})
     assert list(CW001AsyncToolAllowlist().check(discover(repo), load_default_spec())) == []
 
 

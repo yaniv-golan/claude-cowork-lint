@@ -47,9 +47,7 @@ def test_subagent_filter(repo_root: Path) -> None:
 
 
 def test_registry_routes_by_target(repo_root: Path) -> None:
-    desktop = (
-        repo_root / "tests" / "fixtures" / "bundles" / "synthetic_desktop.js"
-    ).read_text()
+    desktop = (repo_root / "tests" / "fixtures" / "bundles" / "synthetic_desktop.js").read_text()
     out = REGISTRY.run(desktop, target="desktop")
     assert "kernel_env_passthrough" in out
     assert "secret_unset_list" in out

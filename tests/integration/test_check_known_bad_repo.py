@@ -13,36 +13,19 @@ if TYPE_CHECKING:
 
 _BAD_REPO_FILES = {
     # CW003 ($CLAUDE_PLUGIN_ROOT bare), CW004 (disable-model-invocation: true), CW005 absent
-    "SKILL.md": (
-        "---\n"
-        "disable-model-invocation: true\n"
-        "---\n"
-        "Reference: $CLAUDE_PLUGIN_ROOT/foo\n"
-    ),
+    "SKILL.md": ("---\ndisable-model-invocation: true\n---\nReference: $CLAUDE_PLUGIN_ROOT/foo\n"),
     # CW010 (reserved-name userConfig)
     ".claude-plugin/plugin.json": (
-        '{"name":"x","version":"0.1.0",'
-        '"userConfig":{"ANTHROPIC_API_KEY":{"type":"string"}}}'
+        '{"name":"x","version":"0.1.0","userConfig":{"ANTHROPIC_API_KEY":{"type":"string"}}}'
     ),
     # CW011 (plugin hooks file present), CW012 (Stop event), CW006 (typo: WriteFile)
-    "hooks/hooks.json": (
-        '{"hooks": {"Stop": [{"command": "echo WriteFile here"}]}}'
-    ),
+    "hooks/hooks.json": ('{"hooks": {"Stop": [{"command": "echo WriteFile here"}]}}'),
     # CW001 (TaskOutput is in drop_set), CW001 (Bash → host_loop_excluded_builtins),
     # CW002 (no Write/Edit), CW009 (mcp__unknown__tool)
-    "agents/bad.md": (
-        "---\ntools: [TaskOutput, Bash, mcp__unknown__tool]\n---\nbody"
-    ),
+    "agents/bad.md": ("---\ntools: [TaskOutput, Bash, mcp__unknown__tool]\n---\nbody"),
     # CW008 (sub-agent dispatch + bash fence)
     "skills/dispatch/SKILL.md": (
-        "---\n"
-        "user-invocable: true\n"
-        "---\n"
-        "Spawn: Task(subagent_type='r')\n"
-        "\n"
-        "```bash\n"
-        "ls\n"
-        "```\n"
+        "---\nuser-invocable: true\n---\nSpawn: Task(subagent_type='r')\n\n```bash\nls\n```\n"
     ),
 }
 
