@@ -46,12 +46,13 @@ export const CW008: Rule = {
         const end = Math.min(cueLine + 30, lines.length);
         for (let fenceIdx = cueLine + 1; fenceIdx <= end; fenceIdx++) {
           if (!BASH_FENCE.test(lines[fenceIdx - 1] ?? "")) continue;
-          // Already reported this fence from an earlier cue — skip.
-          if (reportedFences.has(fenceIdx)) break;
+          // Already reported this fence from an earlier cue — skip, but
+          // keep scanning the rest of this cue's window for other fences.
+          if (reportedFences.has(fenceIdx)) continue;
           const preStart = Math.max(0, fenceIdx - 1 - 3);
           const preWindow = lines.slice(preStart, fenceIdx - 1);
-          if (preWindow.some((l) => MAIN_THREAD.test(l))) break;
-          if (isSuppressed(sups, "CW008", fenceIdx)) break;
+          if (preWindow.some((l) => MAIN_THREAD.test(l))) continue;
+          if (isSuppressed(sups, "CW008", fenceIdx)) continue;
           reportedFences.add(fenceIdx);
           findings.push({
             ruleId: "CW008",
@@ -63,7 +64,9 @@ export const CW008: Rule = {
             suggestion:
               "If main-thread, add a 'main-thread' comment within 3 lines above the fence; otherwise use mcp__workspace__bash.",
           });
-          break;
+          // Continue scanning — a single cue's window may contain multiple
+          // distinct qualifying fences; reportedFences dedups across cues.
+          continue;
         }
       }
     }
