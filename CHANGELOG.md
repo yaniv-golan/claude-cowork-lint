@@ -6,6 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **CW005 now fires only on explicit `user-invocable: false`**, not on absence
+  of the field. Verified against Claude.app `1.6608.2` desktop bundle: the
+  runtime parses the field as `(value?.toLowerCase() !== "false")`, so missing
+  defaults to `true`. Surfaced by dogfooding the linter against
+  [`anthropics/skills`](https://github.com/anthropics/skills): all 17 official
+  skills omit the field and work fine — 17 false-positives became 0. See
+  [`docs/RULES.md#cw005`](docs/RULES.md#cw005) for the runtime-verified semantics.
+
 ## [0.1.0] — TBD (Node-native release)
 
 First public release. Per user request, this single release bundles the entire

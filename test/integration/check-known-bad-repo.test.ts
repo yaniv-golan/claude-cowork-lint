@@ -11,8 +11,12 @@ import { loadDefaultSpec } from "../../src/spec.js";
 import { makeRepo } from "../helpers.js";
 
 const BAD_REPO_FILES: Record<string, string> = {
-  // CW003 ($CLAUDE_PLUGIN_ROOT bare), CW004 (disable-model-invocation: true), CW005 absent
-  "SKILL.md": "---\ndisable-model-invocation: true\n---\nReference: $CLAUDE_PLUGIN_ROOT/foo\n",
+  // CW003 ($CLAUDE_PLUGIN_ROOT bare), CW004 (disable-model-invocation: true),
+  // CW005 (user-invocable explicitly false — was previously "missing", but the
+  // runtime defaults missing→true per Claude.app 1.6608.2 verification, so the
+  // rule now only fires on explicit false).
+  "SKILL.md":
+    "---\nuser-invocable: false\ndisable-model-invocation: true\n---\nReference: $CLAUDE_PLUGIN_ROOT/foo\n",
   // CW010 (reserved-name userConfig)
   ".claude-plugin/plugin.json":
     '{"name":"x","version":"0.1.0","userConfig":{"ANTHROPIC_API_KEY":{"type":"string"}}}',

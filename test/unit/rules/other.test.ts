@@ -170,24 +170,51 @@ describe("CW005", () => {
     }
   });
 
-  it("flags when the field is missing", () => {
+  it("clean when the field is absent (defaults to true at runtime)", () => {
+    // Verified against Claude.app 1.6608.2: the runtime parses
+    // `user-invocable` as `(value?.toLowerCase() !== "false")` — missing → true.
+    // Anthropic's own 17 official skills all omit the field entirely.
     const { root, cleanup } = makeRepo({ "SKILL.md": "---\nname: foo\n---\nbody" });
     try {
-      const findings = CW005.check(discover(root), spec);
-      expect(findings).toHaveLength(1);
-      expect(findings[0]?.ruleId).toBe("CW005");
+      expect(CW005.check(discover(root), spec)).toEqual([]);
     } finally {
       cleanup();
     }
   });
 
-  it("flags when set to false", () => {
+  it("flags when explicitly set to false (boolean)", () => {
     const { root, cleanup } = makeRepo({
       "SKILL.md": "---\nuser-invocable: false\n---\nbody",
     });
     try {
       const findings = CW005.check(discover(root), spec);
       expect(findings).toHaveLength(1);
+      expect(findings[0]?.ruleId).toBe("CW005");
+      expect(findings[0]?.message).toContain("explicitly set to false");
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("flags when explicitly set to the string 'false' (case-insensitive)", () => {
+    // The runtime lowercases before comparing, so "False"/"FALSE"/"false" all opt out.
+    const { root, cleanup } = makeRepo({
+      "SKILL.md": '---\nuser-invocable: "False"\n---\nbody',
+    });
+    try {
+      const findings = CW005.check(discover(root), spec);
+      expect(findings).toHaveLength(1);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("clean when set to any non-false string (e.g. 'yes')", () => {
+    const { root, cleanup } = makeRepo({
+      "SKILL.md": '---\nuser-invocable: "yes"\n---\nbody',
+    });
+    try {
+      expect(CW005.check(discover(root), spec)).toEqual([]);
     } finally {
       cleanup();
     }

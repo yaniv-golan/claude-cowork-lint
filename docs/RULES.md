@@ -10,9 +10,9 @@ or `# cwlint: ignore CWxxx reason="..."`.
 | [CW002](#cw002) | error | Agent has no remaining persistence path |
 | [CW003](#cw003) | warn  | Bare `$CLAUDE_PLUGIN_ROOT` instead of `${...}` |
 | [CW004](#cw004) | error | `disable-model-invocation: true` |
-| [CW005](#cw005) | warn  | Missing `user-invocable: true` |
+| [CW005](#cw005) | warn  | `user-invocable: false` explicitly opts out |
 | [CW006](#cw006) | warn  | Hook command typos a known tool name |
-| ~~CW007~~ | — | *Reserved; deferred to v0.2* |
+| ~~CW007~~ | — | *Reserved indefinitely* — see [`docs/internal/ROADMAP.md`](internal/ROADMAP.md#cw007--intentionally-reserved-indefinitely) |
 | [CW008](#cw008) | warn  | Sub-agent dispatch + bash fence heuristic |
 | [CW009](#cw009) | info  | MCP tool requires a server not registered locally |
 | [CW010](#cw010) | error | Plugin `userConfig` name violates Operon validation |
@@ -145,14 +145,39 @@ Remove the `disable-model-invocation` line.
 ## CW005
 
 **Severity:** warn
-**SPEC:** §skill_frontmatter_invariants.required_fields
+**SPEC:** §skill_frontmatter_invariants.required_fields (with the runtime-verified
+default-true semantics — see below).
 
-`user-invocable: true` is required for the skill to be discoverable through
-the user-facing slash-command surface.
+The runtime parses `user-invocable` as
+`(value?.toLowerCase() !== "false")` — meaning **the field defaults to `true`
+when absent**, and only the explicit string `"false"` opts a skill out.
+Verified against Claude.app `1.6608.2` desktop bundle.
+
+CW005 fires only when the field is **explicitly set to `false`** — the
+common footgun where an author copy-pasted the field thinking they needed
+to opt IN and got the polarity wrong.
+
+### Bad
+
+```yaml
+---
+name: my-skill
+user-invocable: false   # silently opts out of slash-command surface
+---
+```
 
 ### Fix
 
-Add `user-invocable: true` to the SKILL.md frontmatter.
+Either remove the line entirely (default is `true`) or change to
+`user-invocable: true`.
+
+### Rule history
+
+The earlier interpretation (fire when missing) was a contract bug — extracted
+from a SPEC entry that overstated requirement. Empirical re-validation
+against Claude.app 1.6608.2 + scanning of Anthropic's official skills (all
+17 omit the field and work fine) confirmed the missing-as-default-true
+semantics.
 
 ---
 
