@@ -7,7 +7,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,8 +35,26 @@ describe("cli", () => {
     try {
       writeFileSync(join(repo, "SKILL.md"), "---\nuser-invocable: true\n---\nbody");
       const out = execFileSync("npx", ["tsx", cliPath, "check", repo], { encoding: "utf-8" });
-      // Stub text formatter is minimal; just check we got SOME output and no throw.
-      expect(out.length).toBeGreaterThan(0);
+      // Clean repo emits the "no findings" sentinel rather than a "Summary"
+      // line — assert on that to keep this test non-tautological.
+      expect(out).toContain("no findings");
+      expect(out).toContain("1.6259.1");
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  it("check in warn-only mode reports findings via Summary and exits 0", () => {
+    const repo = mkdtempSync(join(tmpdir(), "cwlint-cli-"));
+    try {
+      // hooks/hooks.json fires CW011 (warn). Warn-only mode = exit 0, but
+      // the Summary line must show "0 error" since CW011 isn't error-level.
+      writeFileSync(join(repo, "SKILL.md"), "---\nuser-invocable: true\n---\nbody");
+      mkdirSync(join(repo, "hooks"), { recursive: true });
+      writeFileSync(join(repo, "hooks", "hooks.json"), '{"hooks": {}}');
+      const out = execFileSync("npx", ["tsx", cliPath, "check", repo], { encoding: "utf-8" });
+      expect(out).toContain("Summary:");
+      expect(out).toContain("0 error");
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }

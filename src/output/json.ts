@@ -1,9 +1,10 @@
 /**
- * JSON formatter — B1 implementation of the stable shape from `docs/CLI.md`.
+ * JSON formatter — stable public shape documented in `docs/CLI.md`.
  *
- * Returns the exact public shape (snake_case keys, summary block, version
- * envelope) so consumers can already start integrating. Task B2 adds
- * polish + tests; the shape itself is fixed by the CLI contract doc.
+ * Snake_case keys (mirroring the Python original) and a fixed top-level
+ * envelope so downstream consumers can pin against the schema. Driven by
+ * `summarise()` for the counts, and `VERSION` from `src/about.ts` for the
+ * `cwlint_version` field.
  */
 
 import { VERSION } from "../about.js";

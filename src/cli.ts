@@ -42,7 +42,12 @@ program
   .option("--spec <path>", "Override the bundled contract.")
   .option("--strict", "Exit 1 on any error-severity finding (default: warn-only).", false)
   .option("-f, --format <format>", "Output format: text|json|sarif", "text")
-  .option("--ignore <ruleId...>", "Skip the named rule. Repeatable.")
+  .option(
+    "--ignore <ruleId>",
+    "Rule IDs to skip (repeatable: --ignore CW001 --ignore CW002).",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
   .action(
     (repo: string, opts: { spec?: string; strict: boolean; format: string; ignore?: string[] }) => {
       const fmt = opts.format;
