@@ -1,8 +1,8 @@
 # claude-cowork-lint
 
 [![ci](https://github.com/yaniv-golan/claude-cowork-lint/actions/workflows/ci.yml/badge.svg)](https://github.com/yaniv-golan/claude-cowork-lint/actions/workflows/ci.yml)
-[![PyPI version](https://img.shields.io/pypi/v/claude-cowork-lint.svg)](https://pypi.org/project/claude-cowork-lint/)
-[![Python ≥ 3.11](https://img.shields.io/badge/python-%E2%89%A53.11-brightgreen)](pyproject.toml)
+[![npm version](https://img.shields.io/npm/v/claude-cowork-lint.svg)](https://www.npmjs.com/package/claude-cowork-lint)
+[![Node ≥ 20](https://img.shields.io/badge/node-%E2%89%A520-brightgreen)](package.json)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 > Lint your Claude skill, plugin, and agent files against the **Cowork runtime
@@ -31,22 +31,24 @@ classes of mistake that have actually hit skill authors:
 ## Install
 
 ```bash
-pipx install claude-cowork-lint
-# or
-uv tool install claude-cowork-lint
+npm i -g claude-cowork-lint
 ```
 
 The package ships two CLI binaries with the same behaviour:
 - `claude-cowork-lint` — the descriptive name, suited for CI yaml
 - `cwlint` — short alias for daily use
 
-Python 3.11+ required.
+Node.js 20+ required. The bundled runtime contract is shipped inside the npm
+tarball under `contracts/` and loaded at runtime — no post-install step.
 
 ## Quick start
 
 ```bash
-# Lint the current directory.
-cwlint check .
+# Lint a skill repo (descriptive form).
+claude-cowork-lint check skill/
+
+# Same thing, short alias.
+cwlint check skill/
 
 # CI-style strict mode.
 cwlint check . --strict
@@ -81,15 +83,42 @@ agents/bad.md
 Summary: 1 error, 1 warn, 0 info  (spec: claude-app 1.6259.1)
 ```
 
+## Library API
+
+The package is also usable programmatically from any TypeScript / Node app:
+
+```ts
+import {
+  checkRepo,
+  loadDefaultSpec,
+  loadSpec,
+  type Spec,
+  type Report,
+  type Finding,
+  type Severity,
+} from "claude-cowork-lint";
+
+const spec = loadDefaultSpec();
+const report = checkRepo("./my-skill", spec, { ignore: [] });
+console.log(report.findings);
+```
+
+See [`docs/CLI.md`](docs/CLI.md) for the full library + JSON contract.
+
 ## How the contract is built
 
 `contracts/cowork-v<X>.json` is a JSON-Schema-validated description of the
 Cowork runtime gates, extracted from the Claude.app bundle (Electron app +
-in-VM CLI). v0.1 ships a hand-curated `cowork-v2.1.121.json`; v0.2 will
-auto-extract from a Claude.app bundle path. Every checker rule cites the
-specific contract field it reads.
+in-VM CLI). The shipped contract `cowork-v2.1.121.json` corresponds to
+Claude.app `1.6259.1` / Operon-Core `2.1.121` / in-VM CLI `2.1.138`. Each
+checker rule cites the specific contract field it reads.
 
-See [`docs/internal/SPEC.md`](docs/internal/SPEC.md) for the full design.
+The `cwlint extract <bundle>` subcommand can re-derive the contract from a
+fresh `app.asar` using AST-based behavioural anchors (`@babel/parser`); the
+`scripts/check-for-new-release.ts` watcher runs it daily on a cron and
+produces a candidate diff for human review. See
+[`docs/SPEC-EXTRACTION.md`](docs/SPEC-EXTRACTION.md) and
+[`docs/internal/SPEC.md`](docs/internal/SPEC.md) for the full design.
 
 ## Suppressions
 
@@ -121,10 +150,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: "3.12"
-      - run: pipx install claude-cowork-lint
+          node-version: "20"
+      - run: npm i -g claude-cowork-lint
       - run: claude-cowork-lint check . --strict --format sarif > cwlint.sarif
       - uses: github/codeql-action/upload-sarif@v3
         with:
@@ -136,15 +165,26 @@ jobs:
 - [`docs/RULES.md`](docs/RULES.md) — every rule (`CW001`–`CW012`), with examples and fixes
 - [`docs/CLI.md`](docs/CLI.md) — stable CLI/JSON contract for tooling integration
 - [`docs/SPEC-EXTRACTION.md`](docs/SPEC-EXTRACTION.md) — how a new Claude.app bundle becomes a contract file
-- [`docs/internal/ROADMAP.md`](docs/internal/ROADMAP.md) — phase plan for v0.2 → v1.0
+- [`docs/internal/ROADMAP.md`](docs/internal/ROADMAP.md) — what shipped in v0.1.0 and what's deferred
 
 ## Roadmap
 
-- **v0.1 (this release)** — vendored static spec + checker (11 rules; CW007 reserved)
-- **v0.2** — bundle extractor + bundled Claude plugin
-- **v0.3** — upstream watcher: daily check for a new Claude.app, auto-PR the contract diff
-- **v0.4** — Node.js bindings (TypeScript port)
-- **v1.0** — schema lock, integration suite covering each cited Anthropic issue
+Per user request, the v0.1.0 release bundles the entire originally-planned
+roadmap (v0.1 → v1.0). All of the following are **shipped**:
+
+- **v0.1** — vendored static spec + checker (11 rules; CW007 reserved indefinitely)
+- **v0.2** — bundle extractor (`cwlint extract`), validated end-to-end against
+  Claude.app `1.6608.2` and CLI `2.1.138`
+- **v0.3** — upstream watcher (`scripts/check-for-new-release.ts`) on a daily cron
+- **v0.4** — Node is now the implementation (this package); bundled Claude
+  plugin at `.claude-plugin/`, skill at `skills/claude-cowork-lint/`, slash
+  command at `commands/cwlint-check.md`
+- **v1.0** — `spec_version: "0"` schema-locked by guard test; Anthropic-issue
+  integration suite proves every cited issue triggers its CW rule
+
+Future patch releases will refine these implementations rather than add new
+phases. CW007 is reserved indefinitely; see
+[`docs/internal/ROADMAP.md`](docs/internal/ROADMAP.md).
 
 ## Status
 
