@@ -8,20 +8,53 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pathlib import Path
 
-_RULE = tuple[str, tuple[str, ...]]
-
 # (importer_prefix, forbidden_imports): a module under `importer_prefix` may NOT
 # import any module whose dotted name starts with one of `forbidden_imports`.
-_HIGH = ("cwlint.cli", "cwlint.engine", "cwlint.output")
-_HIGH_PLUS_DEPS = (*_HIGH, "cwlint.discovery", "cwlint.rules", "cwlint.spec")
-_RULES: list[_RULE] = [
-    ("cwlint.spec", (*_HIGH, "cwlint.discovery", "cwlint.rules")),
-    ("cwlint.findings", _HIGH_PLUS_DEPS),
-    ("cwlint.suppression", _HIGH_PLUS_DEPS),
-    ("cwlint.discovery", (*_HIGH, "cwlint.rules")),
-    ("cwlint.rules", _HIGH),
-    ("cwlint.output", (*_HIGH, "cwlint.rules", "cwlint.discovery")),
-    ("cwlint.engine", ("cwlint.cli", "cwlint.output")),
+# A module is allowed to import its own package (e.g. cwlint.output.text imports
+# cwlint.output.json_fmt) — forbidden lists are strictly cross-package.
+_RULES: list[tuple[str, tuple[str, ...]]] = [
+    (
+        "cwlint.spec",
+        ("cwlint.cli", "cwlint.engine", "cwlint.discovery", "cwlint.rules", "cwlint.output"),
+    ),
+    (
+        "cwlint.findings",
+        (
+            "cwlint.cli",
+            "cwlint.engine",
+            "cwlint.discovery",
+            "cwlint.rules",
+            "cwlint.output",
+            "cwlint.spec",
+        ),
+    ),
+    (
+        "cwlint.suppression",
+        (
+            "cwlint.cli",
+            "cwlint.engine",
+            "cwlint.discovery",
+            "cwlint.rules",
+            "cwlint.output",
+            "cwlint.spec",
+        ),
+    ),
+    (
+        "cwlint.discovery",
+        ("cwlint.cli", "cwlint.engine", "cwlint.rules", "cwlint.output"),
+    ),
+    (
+        "cwlint.rules",
+        ("cwlint.cli", "cwlint.engine", "cwlint.output"),
+    ),
+    (
+        "cwlint.output",
+        ("cwlint.cli", "cwlint.engine", "cwlint.rules", "cwlint.discovery"),
+    ),
+    (
+        "cwlint.engine",
+        ("cwlint.cli", "cwlint.output"),
+    ),
 ]
 
 
@@ -47,6 +80,9 @@ def test_no_layer_violations(repo_root: Path) -> None:
             if not mod.startswith(prefix):
                 continue
             for imp in imports:
+                # Allow importing one's own package (intra-package siblings).
+                if imp == prefix or imp.startswith(prefix + "."):
+                    continue
                 if any(imp == f or imp.startswith(f + ".") for f in forbidden):
                     violations.append(f"{mod} imports {imp} (forbidden by {prefix})")
     assert not violations, "Layer-boundary violations:\n" + "\n".join(violations)

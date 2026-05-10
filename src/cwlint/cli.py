@@ -85,7 +85,8 @@ def list_rules() -> None:
     """Print every CWxxx rule with severity and summary."""
     rules = sorted(all_rules(), key=lambda r: r.rule_id)
     for rule in rules:
-        typer.echo(f"{rule.rule_id}  {str(rule.severity):<6}  {rule.summary}")
+        sev = str(rule.severity)
+        typer.echo(f"{rule.rule_id}  {sev:<6}  {rule.summary}")
 
 
 @app.command("spec-info")
