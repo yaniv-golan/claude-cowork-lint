@@ -1,0 +1,22 @@
+{
+  "name": "claude-cowork-lint",
+  "version": "0.1.0",
+  "description": "Drive `claude-cowork-lint` from inside Claude Code or Claude Cowork to validate skill/plugin/agent files against the Cowork runtime contract before they ship.",
+  "author": {
+    "name": "Yaniv Golan",
+    "email": "yaniv@lool.vc"
+  },
+  "repository": "https://github.com/yaniv-golan/claude-cowork-lint",
+  "homepage": "https://github.com/yaniv-golan/claude-cowork-lint#readme",
+  "license": "MIT",
+  "keywords": [
+    "claude",
+    "claude-code",
+    "claude-cowork",
+    "operon",
+    "skill",
+    "plugin",
+    "linter",
+    "contract"
+  ]
+}

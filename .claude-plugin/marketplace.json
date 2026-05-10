@@ -1,0 +1,31 @@
+{
+  "name": "claude-cowork-lint",
+  "owner": {
+    "name": "Yaniv Golan",
+    "email": "yaniv@lool.vc"
+  },
+  "metadata": {
+    "description": "claude-cowork-lint — validate skill/plugin/agent repos against the Claude Cowork runtime contract.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "claude-cowork-lint",
+      "source": ".",
+      "description": "Run `claude-cowork-lint` from inside Claude Code or Claude Cowork to catch skills that won't survive the Cowork runtime gates. Requires the `claude-cowork-lint` (or `cwlint`) binary on PATH — install separately via `pipx install claude-cowork-lint`.",
+      "author": {
+        "name": "Yaniv Golan",
+        "email": "yaniv@lool.vc"
+      },
+      "category": "diagnostics",
+      "tags": [
+        "claude",
+        "claude-code",
+        "claude-cowork",
+        "operon",
+        "linter",
+        "contract"
+      ]
+    }
+  ]
+}
