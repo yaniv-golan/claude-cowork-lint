@@ -98,8 +98,13 @@ export const RULE_META: Record<string, RuleMeta> = {
   },
   CW009: {
     ruleId: "CW009",
-    // Reads .mcp.json in the target repo; doesn't read the spec.
-    contractAnchors: [],
+    // Reads .mcp.json in the target repo PLUS the contract's list of
+    // auto-registered Cowork built-in MCP servers (9 names in v1.6608.2:
+    // cowork, cowork-onboarding, mcp-registry, plugins, radar,
+    // scheduled-tasks, skills, terminal, workspace). Refreshed in B5 after
+    // the v1.6608.2 bundle audit showed the prior 3-name hardcoded list was
+    // silently false-positiving the other 6.
+    contractAnchors: ["host_loop_tool_substitution.cowork_builtin_mcp_servers.names"],
     verifiedAgainst: "1.6608.2",
     status: "stable",
   },

@@ -19,6 +19,7 @@ export interface HostLoopExcludedBuiltins {
 export interface HostLoopToolSubstitution {
   host_loop_safe_set: NamedStringSet;
   host_loop_excluded_builtins: HostLoopExcludedBuiltins;
+  cowork_builtin_mcp_servers?: NamedStringSet;
   renderer_dependent_extra_drops?: NamedStringSet;
 }
 

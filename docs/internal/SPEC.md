@@ -193,6 +193,21 @@ Four components, each ships independently:
         "_note_others": "NotebookEdit, REPL, JavaScript replacements not yet traced; likely served via the cowork artifact MCP server or absent in async sub-agents (these are interactive notebook/REPL tools — meaningful only in main-loop dispatch)."
       }
     },
+    "cowork_builtin_mcp_servers": {
+      "_description": "MCP server prefixes the Cowork desktop auto-registers — any tool whose name starts with `mcp__<server>__` for one of these servers is a runtime-supplied built-in, not user-authored. CW009 consumes this list to distinguish 'unregistered third-party server' (flag) from 'auto-registered Cowork built-in' (clean). Source of truth: structural enumeration of `mcp__<server>__<tool>` literals in the v1.6608.2 desktop bundle. v1.6608.2 ships 9 names; earlier internal docs only listed 3 (`workspace`, `cowork`, `cowork-onboarding`), causing CW009 to silently false-positive references to the other six.",
+      "names": [
+        "cowork",
+        "cowork-onboarding",
+        "mcp-registry",
+        "plugins",
+        "radar",
+        "scheduled-tasks",
+        "skills",
+        "terminal",
+        "workspace"
+      ],
+      "verified_against": "claude.app@1.6608.2 desktop bundle (.vite/build/index.js)"
+    },
     "renderer_dependent_extra_drops": {
       "_description": "Additional drops applied when the session is a 'Bridge' or 'Dispatch child' (i.e. async sub-agent dispatch). On top of host-loop exclusion.",
       "names": ["AskUserQuestion", "mcp__cowork-onboarding__show_onboarding_role_picker",

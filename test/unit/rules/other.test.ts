@@ -1,6 +1,6 @@
 /**
- * Tests for CW002, CW003, CW004, CW005, CW006, CW009, CW010, CW011, CW012.
- * (CW008 lives in `cw008.test.ts`.)
+ * Tests for CW002, CW003, CW004, CW005, CW006, CW010, CW011, CW012.
+ * (CW008 lives in `cw008.test.ts`; CW009 lives in `cw009.test.ts`.)
  * Ported from `_legacy/python/tests/unit/rules/test_other_rules.py`.
  */
 
@@ -13,7 +13,6 @@ import {
   CW004,
   CW005,
   CW006,
-  CW009,
   CW010,
   CW011,
   CW012,
@@ -260,54 +259,7 @@ describe("CW006", () => {
   });
 });
 
-// ---------- CW009 ----------
-
-describe("CW009", () => {
-  it("clean — no MCP tools at all", () => {
-    const { root, cleanup } = makeRepo({ "agents/a.md": "---\ntools: [Read, Write]\n---\nx" });
-    try {
-      expect(CW009.check(discover(root), spec)).toEqual([]);
-    } finally {
-      cleanup();
-    }
-  });
-
-  it("workspace MCP server is built-in (no .mcp.json needed)", () => {
-    const { root, cleanup } = makeRepo({
-      "agents/a.md": "---\ntools: [mcp__workspace__bash]\n---\nx",
-    });
-    try {
-      expect(CW009.check(discover(root), spec)).toEqual([]);
-    } finally {
-      cleanup();
-    }
-  });
-
-  it("registered server in .mcp.json passes", () => {
-    const { root, cleanup } = makeRepo({
-      "agents/a.md": "---\ntools: [mcp__myserver__tool]\n---\nx",
-      ".mcp.json": '{"mcpServers": {"myserver": {}}}',
-    });
-    try {
-      expect(CW009.check(discover(root), spec)).toEqual([]);
-    } finally {
-      cleanup();
-    }
-  });
-
-  it("unregistered server is flagged", () => {
-    const { root, cleanup } = makeRepo({
-      "agents/a.md": "---\ntools: [mcp__myserver__tool]\n---\nx",
-    });
-    try {
-      const findings = CW009.check(discover(root), spec);
-      expect(findings).toHaveLength(1);
-      expect(findings[0]?.ruleId).toBe("CW009");
-    } finally {
-      cleanup();
-    }
-  });
-});
+// CW009 lives in `cw009.test.ts` (extracted in Task B5).
 
 // ---------- CW010 ----------
 

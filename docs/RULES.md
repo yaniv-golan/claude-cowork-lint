@@ -259,8 +259,26 @@ ls
 **SPEC:** §subagent_tool_filter.mcp_tools + §host_loop_tool_substitution
 
 The agent declares `mcp__<server>__<tool>`, but `<server>` is not registered
-in any `.mcp.json` in the repo and isn't one of the auto-registered Cowork
-built-ins (`workspace`, `cowork`, `cowork-onboarding`).
+in any `.mcp.json` in the repo and isn't one of the MCP servers the Cowork
+desktop auto-registers.
+
+Cowork built-in MCP servers (v1.6608.2 — driven by the contract field
+`host_loop_tool_substitution.cowork_builtin_mcp_servers.names`, discovered by
+enumerating `mcp__<server>__<tool>` literals in the desktop bundle):
+
+- `cowork`
+- `cowork-onboarding`
+- `mcp-registry`
+- `plugins`
+- `radar`
+- `scheduled-tasks`
+- `skills`
+- `terminal`
+- `workspace`
+
+Prior to v0.1.1 the rule only recognised three of these (`workspace`,
+`cowork`, `cowork-onboarding`) — references to the other six were silently
+false-positived.
 
 ### Fix
 

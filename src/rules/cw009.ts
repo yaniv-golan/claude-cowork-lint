@@ -3,7 +3,10 @@
  *
  * Checks each `mcp__<server>__<tool>` entry against the union of (a) the
  * `mcpServers` keys in any .mcp.json found in the repo, and (b) Cowork's
- * built-in MCP namespaces (workspace, cowork, cowork-onboarding).
+ * built-in MCP namespaces — sourced from the contract field
+ * `host_loop_tool_substitution.cowork_builtin_mcp_servers.names`. v1.6608.2
+ * lists 9 built-ins: cowork, cowork-onboarding, mcp-registry, plugins, radar,
+ * scheduled-tasks, skills, terminal, workspace.
  */
 import { readFileSync } from "node:fs";
 import type { Finding } from "../findings.js";
@@ -11,13 +14,14 @@ import { findTokenLine, parseFrontmatter } from "../frontmatter.js";
 import { isSuppressed, parseSuppressions } from "../suppression.js";
 import { getStringList, type Rule, rel } from "./_helpers.js";
 
-const BUILTIN_MCP_SERVERS = new Set(["workspace", "cowork", "cowork-onboarding"]);
-
 export const CW009: Rule = {
   ruleId: "CW009",
   severity: "info",
   summary: "Agent declares MCP tool whose server may not be registered",
-  check(layout, _spec) {
+  check(layout, spec) {
+    const builtins = new Set<string>(
+      spec.host_loop_tool_substitution.cowork_builtin_mcp_servers?.names ?? [],
+    );
     const registered = new Set<string>();
     for (const cfg of layout.mcpConfigs) {
       try {
@@ -44,16 +48,17 @@ export const CW009: Rule = {
         const segments = tool.split("__", 3);
         if (segments.length < 3) continue;
         const server = segments[1];
-        if (!server || BUILTIN_MCP_SERVERS.has(server) || registered.has(server)) continue;
+        if (!server || builtins.has(server) || registered.has(server)) continue;
         const lineNo = findTokenLine(text, tool, fm.bodyStartLine);
         if (isSuppressed(sups, "CW009", lineNo)) continue;
+        const builtinList = [...builtins].sort().join(", ");
         findings.push({
           ruleId: "CW009",
           severity: "info",
           path: rel(layout.root, path),
           line: lineNo,
           message: `MCP tool '${tool}' requires server '${server}'`,
-          detail: `No '.mcp.json' registers '${server}', and it isn't a Cowork built-in (workspace, cowork, cowork-onboarding).`,
+          detail: `No '.mcp.json' registers '${server}', and it isn't a Cowork built-in (${builtinList}).`,
           suggestion: `Register '${server}' in '.mcp.json' or document the dependency.`,
         });
       }
