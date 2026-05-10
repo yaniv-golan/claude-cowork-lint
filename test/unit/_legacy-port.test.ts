@@ -1,13 +1,13 @@
 /**
- * End-to-end tests using Node's built-in test runner.
- * Run via `npm test` from `packages/cwlint-js/`.
+ * End-to-end tests ported from Node's built-in test runner to vitest.
+ * Kept as a sanity test until Task E1 supersedes it; renamed so it isn't
+ * auto-picked-up as the canonical smoke test.
  */
 
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
-import { describe, it } from "node:test";
-import assert from "node:assert/strict";
+import { describe, it, expect } from "vitest";
 
 import {
   ALL_RULES,
@@ -15,7 +15,7 @@ import {
   loadDefaultSpec,
   parseSuppressions,
   isSuppressed,
-} from "./index.js";
+} from "../../src/index.js";
 
 function makeRepo(files: Record<string, string>): { root: string; cleanup: () => void } {
   const root = mkdtempSync(join(tmpdir(), "cwlint-js-test-"));
@@ -30,7 +30,7 @@ function makeRepo(files: Record<string, string>): { root: string; cleanup: () =>
 describe("ALL_RULES", () => {
   it("ships exactly the v0.1 rule set", () => {
     const ids = ALL_RULES.map((r) => r.ruleId).sort();
-    assert.deepEqual(ids, [
+    expect(ids).toEqual([
       "CW001",
       "CW002",
       "CW003",
@@ -43,16 +43,16 @@ describe("ALL_RULES", () => {
       "CW011",
       "CW012",
     ]);
-    assert(!ids.includes("CW007"), "CW007 is reserved/deferred");
+    expect(!ids.includes("CW007"), "CW007 is reserved/deferred").toBeTruthy();
   });
 });
 
 describe("loadDefaultSpec", () => {
   it("loads v2.1.121 contract", () => {
     const spec = loadDefaultSpec();
-    assert.equal(spec.spec_version, "0");
-    assert.equal(spec.claude_app_version, "1.6259.1");
-    assert(spec.subagent_tool_filter.async_dispatch_allowlist.names.includes("Bash"));
+    expect(spec.spec_version).toBe("0");
+    expect(spec.claude_app_version).toBe("1.6259.1");
+    expect(spec.subagent_tool_filter.async_dispatch_allowlist.names.includes("Bash")).toBeTruthy();
   });
 });
 
@@ -61,19 +61,19 @@ describe("parseSuppressions", () => {
     const sups = parseSuppressions([
       "<!-- cwlint: ignore CW001 reason=\"legacy\" -->",
     ]);
-    assert.equal(sups.length, 1);
-    assert.deepEqual(sups[0]?.ruleIds, ["CW001"]);
+    expect(sups.length).toBe(1);
+    expect(sups[0]?.ruleIds).toEqual(["CW001"]);
   });
   it("respects same-line suppression", () => {
     const sups = parseSuppressions(["foo  # cwlint: ignore CW001 reason=\"x\""]);
-    assert(isSuppressed(sups, "CW001", 1));
+    expect(isSuppressed(sups, "CW001", 1)).toBeTruthy();
   });
   it("respects line-above suppression", () => {
     const sups = parseSuppressions([
       "# cwlint: ignore CW001 reason=\"x\"",
       "TaskOutput",
     ]);
-    assert(isSuppressed(sups, "CW001", 2));
+    expect(isSuppressed(sups, "CW001", 2)).toBeTruthy();
   });
 });
 
@@ -85,7 +85,7 @@ describe("checkRepo", () => {
     });
     try {
       const report = checkRepo(root, loadDefaultSpec());
-      assert.deepEqual(report.findings, []);
+      expect(report.findings).toEqual([]);
     } finally {
       cleanup();
     }
@@ -99,7 +99,7 @@ describe("checkRepo", () => {
     try {
       const report = checkRepo(root, loadDefaultSpec());
       const cw004 = report.findings.filter((f) => f.ruleId === "CW004");
-      assert.equal(cw004.length, 1);
+      expect(cw004.length).toBe(1);
     } finally {
       cleanup();
     }
@@ -112,8 +112,8 @@ describe("checkRepo", () => {
     try {
       const report = checkRepo(root, loadDefaultSpec());
       const cw001 = report.findings.filter((f) => f.ruleId === "CW001");
-      assert.equal(cw001.length, 1);
-      assert(cw001[0]?.suggestion?.includes("mcp__workspace__bash"));
+      expect(cw001.length).toBe(1);
+      expect(cw001[0]?.suggestion?.includes("mcp__workspace__bash")).toBeTruthy();
     } finally {
       cleanup();
     }
@@ -125,7 +125,7 @@ describe("checkRepo", () => {
     });
     try {
       const report = checkRepo(root, loadDefaultSpec());
-      assert(report.findings.some((f) => f.ruleId === "CW002"));
+      expect(report.findings.some((f) => f.ruleId === "CW002")).toBeTruthy();
     } finally {
       cleanup();
     }
@@ -137,7 +137,7 @@ describe("checkRepo", () => {
     });
     try {
       const report = checkRepo(root, loadDefaultSpec());
-      assert(report.findings.some((f) => f.ruleId === "CW011"));
+      expect(report.findings.some((f) => f.ruleId === "CW011")).toBeTruthy();
     } finally {
       cleanup();
     }
@@ -150,7 +150,7 @@ describe("checkRepo", () => {
     });
     try {
       const report = checkRepo(root, loadDefaultSpec(), { ignore: ["CW004"] });
-      assert(!report.findings.some((f) => f.ruleId === "CW004"));
+      expect(!report.findings.some((f) => f.ruleId === "CW004")).toBeTruthy();
     } finally {
       cleanup();
     }
@@ -184,7 +184,7 @@ describe("checkRepo", () => {
         "CW012",
       ];
       const missing = expected.filter((r) => !fired.has(r));
-      assert.deepEqual(missing, [], `missing: ${missing.join(",")} fired: ${[...fired].sort().join(",")}`);
+      expect(missing, `missing: ${missing.join(",")} fired: ${[...fired].sort().join(",")}`).toEqual([]);
     } finally {
       cleanup();
     }

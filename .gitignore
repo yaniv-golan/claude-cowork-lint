@@ -1,26 +1,7 @@
 # Node
 node_modules/
-packages/*/dist/
-*.tgz
-
-# Python
-__pycache__/
-*.py[cod]
-*.egg-info/
-.eggs/
-build/
 dist/
-.venv/
-.smoke-venv/
-.python-version
-
-# Tooling caches
-.ruff_cache/
-.mypy_cache/
-.pytest_cache/
-.coverage
-coverage.xml
-htmlcov/
+*.tgz
 
 # OS
 .DS_Store
@@ -32,9 +13,11 @@ htmlcov/
 # Repo-local
 docs/superpowers/
 docs/internal/scratch/
-*.local.json
 
 # Secrets
 .env
 .env.*
 !.env.example
+
+# Note: _legacy/python/ is intentionally TRACKED — working-tree archive of the
+# pre-rewrite state. Removed in Task G7 after migration is verified.
