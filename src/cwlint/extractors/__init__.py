@@ -11,6 +11,7 @@ fixtures. Validation against a current production Claude.app is v0.2 work.
 from __future__ import annotations
 
 from cwlint.extractors._base import Extractor, ExtractorRegistry
+from cwlint.extractors.host_loop import HostLoopExtractor
 from cwlint.extractors.kernel_env_allowlist import KernelEnvAllowlistExtractor
 from cwlint.extractors.secret_unset_list import SecretUnsetListExtractor
 from cwlint.extractors.subagent_filter import SubagentFilterExtractor
@@ -19,11 +20,13 @@ REGISTRY = ExtractorRegistry()
 REGISTRY.register(KernelEnvAllowlistExtractor())
 REGISTRY.register(SubagentFilterExtractor())
 REGISTRY.register(SecretUnsetListExtractor())
+REGISTRY.register(HostLoopExtractor())
 
 __all__ = [
     "REGISTRY",
     "Extractor",
     "ExtractorRegistry",
+    "HostLoopExtractor",
     "KernelEnvAllowlistExtractor",
     "SecretUnsetListExtractor",
     "SubagentFilterExtractor",

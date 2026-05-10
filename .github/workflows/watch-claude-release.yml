@@ -1,8 +1,9 @@
 name: watch-claude-release
 
-# v0.3 STUB — wired up but does not yet auto-PR.
-# It runs the watcher script in dry-run mode and uploads the report as an artifact
-# so a maintainer can decide whether to extract.
+# v0.3 — runs the extractor end-to-end against the synthetic fixtures
+# shipped in the repo (since we can't install Claude.app inside GitHub
+# Actions). When wired against a real macOS runner with Claude.app
+# installed, swap `--bundle` to `--app /Applications/Claude.app`.
 
 on:
   schedule:
@@ -25,11 +26,18 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - run: uv python install 3.12
       - run: uv sync --all-extras --frozen
-      - name: Check for new Claude.app release (dry-run)
-        run: uv run python scripts/check_for_new_release.py --dry-run --report report.json
-      - name: Upload report
+      - name: Run extractor pipeline against synthetic fixtures
+        run: |
+          uv run python scripts/check_for_new_release.py \
+            --bundle tests/fixtures/bundles/synthetic_desktop.js \
+            --cli-bundle tests/fixtures/bundles/synthetic_cli.js \
+            --output-dir watcher-output \
+            --report report.json
+      - name: Upload report + candidate contract
         uses: actions/upload-artifact@v4
         with:
-          name: watcher-report
-          path: report.json
+          name: watcher-output
+          path: |
+            report.json
+            watcher-output/
           retention-days: 14
