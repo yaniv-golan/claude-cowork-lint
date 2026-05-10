@@ -2,7 +2,7 @@
 /**
  * `claude-cowork-lint` / `cwlint` — commander v12 entry point.
  *
- * Subcommands: `check`, `list-rules`, `spec-info`, `extract`.
+ * Subcommands: `check`, `list-rules`, `spec-info`, `doctor`, `extract`.
  *
  * Exit-code contract (see `docs/CLI.md`):
  *   0 = clean, or warn-only mode (default) regardless of finding count
@@ -110,6 +110,40 @@ program
     const width = Math.max(...lines.map(([k]) => k.length));
     for (const [k, v] of lines) {
       process.stdout.write(`${k.padEnd(width)}  ${v}\n`);
+    }
+  });
+
+program
+  .command("doctor")
+  .description("Audit rules against the loaded contract; report stale or deprecated rules.")
+  .option("--spec <path>", "Override the bundled contract.")
+  .option("-f, --format <format>", "Output format: text|json", "text")
+  .action(async (opts: { spec?: string; format: string }) => {
+    const fmt = opts.format;
+    if (fmt !== "text" && fmt !== "json") {
+      process.stderr.write(`error: unknown --format '${fmt}' (expected text|json)\n`);
+      process.exit(2);
+    }
+    // Dynamic import — keeps the doctor module out of the cold-path
+    // startup graph (same convention as `extract`).
+    const { runDoctor } = await import("./doctor.js");
+    const spec = opts.spec ? loadSpec(opts.spec) : loadDefaultSpec();
+    const report = runDoctor(spec);
+
+    if (fmt === "json") {
+      process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+      return;
+    }
+    for (const r of report.rules) {
+      const icon = r.overall === "ok" ? "✓" : r.overall === "deprecated" ? "—" : "✗";
+      process.stdout.write(
+        `${icon} ${r.ruleId}  ${r.overall.padEnd(11)}  verified ${r.verified_against}  status ${r.status}\n`,
+      );
+      if (r.overall === "stale") {
+        for (const a of r.anchors.filter((x) => !x.resolved)) {
+          process.stdout.write(`     missing anchor: ${a.path}\n`);
+        }
+      }
     }
   });
 
