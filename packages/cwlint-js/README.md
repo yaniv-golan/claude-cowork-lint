@@ -2,10 +2,9 @@
 
 TypeScript bindings for [`claude-cowork-lint`](https://github.com/yaniv-golan/claude-cowork-lint).
 
-> **Status: v0.4 scaffolding.** v0.1 ships the spec loader and `CW001` as a
-> proof of concept. Rules `CW002`–`CW012` will land in v0.4 alongside the
-> Python reference implementation. Until then, prefer the Python package for
-> production use.
+Implements the same rule set as the Python reference (`CW001`–`CW012`,
+with `CW007` reserved). Reads the same `contracts/cowork-v*.json` files —
+the contract is the source of truth, both implementations are renderers.
 
 ## Install
 
@@ -15,22 +14,48 @@ npm install claude-cowork-lint
 
 ## Usage
 
+### Programmatic
+
 ```ts
-import { loadDefaultSpec, checkCw001 } from "claude-cowork-lint";
+import { checkRepo, loadDefaultSpec } from "claude-cowork-lint";
 
 const spec = loadDefaultSpec();
-const findings = checkCw001("agents/reviewer.md", spec);
-for (const f of findings) {
+const report = checkRepo("./my-skill-repo", spec);
+for (const f of report.findings) {
   console.log(`${f.ruleId} ${f.path}:${f.line}  ${f.message}`);
 }
 ```
 
-## Architecture
+### Tree-shake the rules
 
-The Node port reads the **same** `contracts/cowork-v*.json` files as the
-Python package — the contract is the source of truth, both implementations
-are renderers. JSON schema parity is enforced by
-`tests/unit/test_contracts_sync.py` in the Python package.
+```ts
+import { CW001, CW004, discover, loadDefaultSpec } from "claude-cowork-lint";
+
+const spec = loadDefaultSpec();
+const layout = discover("./my-skill-repo");
+const findings = [...CW001.check(layout, spec), ...CW004.check(layout, spec)];
+```
+
+### Suppression
+
+Inline markers honour the same `cwlint: ignore CWxxx reason="..."` syntax as
+the Python implementation.
+
+```ts
+import { isSuppressed, parseSuppressions } from "claude-cowork-lint";
+
+const lines = source.split("\n");
+const sups = parseSuppressions(lines);
+isSuppressed(sups, "CW001", 42);  // true if marker on line 41 or 42
+```
+
+## Build & test
+
+```bash
+npm install
+npm run build
+npm test
+```
 
 ## License
 

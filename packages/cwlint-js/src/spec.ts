@@ -51,6 +51,18 @@ export interface SkillFrontmatterInvariants {
   };
 }
 
+export interface UserSecretsValidation {
+  name_regex: string;
+  name_uppercased?: boolean;
+  name_max_length: number;
+  value_max_bytes: number;
+  reserved_name_literals: string[];
+}
+
+export interface UserSecretsInjection {
+  validation: UserSecretsValidation;
+}
+
 export interface Spec {
   spec_version: string;
   claude_app_version: string;
@@ -60,6 +72,7 @@ export interface Spec {
   host_loop_tool_substitution: HostLoopToolSubstitution;
   kernel_env_passthrough: KernelEnvPassthrough;
   skill_frontmatter_invariants: SkillFrontmatterInvariants;
+  user_secrets_injection: UserSecretsInjection;
   secret_unset_list: NamedStringSet;
   // Other fields from the JSON are preserved but not typed strictly.
   [key: string]: unknown;
