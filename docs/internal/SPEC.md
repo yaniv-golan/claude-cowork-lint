@@ -243,6 +243,7 @@ Four components, each ships independently:
       "origin_check": "y() — top frame at https://claude.ai or https://preview.claude.ai"
     },
     "validation": {
+      "_status_1_6608_2": "DEPRECATED — the Operon kernel-secrets subsystem (OperonSecrets IPC, claude.operon renderer bridge, this validation regime) was removed in Claude.app 1.6608.2. Zero occurrences of `OperonSecrets` or `claude.operon` in the desktop bundle (see docs/internal/CONTRACT-AUDIT-1.6608.2.md). The field is kept here as historical record and continues to drive CW010's reserved-name matching, but CW010 is now severity:info / status:deprecated because the runtime no longer enforces these rules. Plugin userConfig is validated today by the extension-manifest schema, which we do not currently model.",
       "name_regex": "^[A-Za-z][A-Za-z0-9_]*$",
       "name_uppercased": true,
       "name_max_length": 128,
@@ -497,7 +498,7 @@ for finding in report.findings:
 | `CW007` | error | Hook command references env var not in kernel passthrough allowlist. (Skill ships expecting the var; runtime won't pass it.) |
 | `CW008` | warn | Sub-agent dispatch cue (heuristic regex) followed within 30 lines by a fenced ```bash block. v0.4.0 failure pattern. |
 | `CW009` | info | Skill declares MCP tool dependency that won't pass through async-dispatch filter. |
-| `CW010` | error | Plugin `userConfig` declares an option whose name violates `KXi` validation rules (uppercased, regex, ≤128 chars, not in reserved set). |
+| `CW010` | info (deprecated) | Plugin `userConfig` declares an option whose name overlaps a legacy Operon reserved literal (`ANTHROPIC_API_KEY`, `DATABASE_URL`, `SECRET_KEY`) or fails the legacy uppercased / regex / ≤128-char rules. The Operon kernel-secrets subsystem was removed in Claude.app 1.6608.2; this rule is retained as a hygiene check. |
 | `CW011` | warn | Plugin has `hooks/hooks.json` (or any plugin-scoped hook declaration). Will not fire in Cowork sessions due to `--setting-sources=user` excluding plugin scope. See [#16288](https://github.com/anthropics/claude-code/issues/16288) / [#27398](https://github.com/anthropics/claude-code/issues/27398). Recommend documenting the limitation, providing a `~/.claude/settings.json` fallback snippet for users, or moving lifecycle hooks (Stop / SubagentStop / SessionStart / PostToolUse) out of the plugin entirely. |
 | `CW012` | info | Plugin's `hooks/hooks.json` declares specific hook events known to be silently broken in Cowork: `SessionStart`, `Stop`, `SubagentStart`, `SubagentStop`, `UserPromptSubmit`, `PostToolUse`. Higher-confidence variant of `CW011`. |
 

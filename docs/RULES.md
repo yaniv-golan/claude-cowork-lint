@@ -15,7 +15,7 @@ or `# cwlint: ignore CWxxx reason="..."`.
 | ~~CW007~~ | — | *Reserved indefinitely* — see [`docs/internal/ROADMAP.md`](internal/ROADMAP.md#cw007--intentionally-reserved-indefinitely) |
 | [CW008](#cw008) | warn  | Sub-agent dispatch + bash fence heuristic |
 | [CW009](#cw009) | info  | MCP tool requires a server not registered locally |
-| [CW010](#cw010) | error | Plugin `userConfig` name violates Operon validation |
+| [CW010](#cw010) | info  | Plugin `userConfig` name overlaps a legacy Operon reserved name (deprecated) |
 | [CW011](#cw011) | warn  | Plugin has `hooks/hooks.json` |
 | [CW012](#cw012) | info  | Plugin hooks declare events known broken in Cowork |
 
@@ -271,14 +271,20 @@ SKILL.md.
 
 ## CW010
 
-**Severity:** error
-**SPEC:** §user_secrets_injection.validation
+**Severity:** info (deprecated)
+**Status:** The Operon kernel-secrets subsystem that originally enforced this
+was **removed in Claude.app 1.6608.2** (zero occurrences of `OperonSecrets`
+/ `claude.operon` in the desktop bundle — see
+`docs/internal/CONTRACT-AUDIT-1.6608.2.md`). Plugin `userConfig` is now
+validated by the extension manifest schema, a different system this rule
+does not currently model. The rule survives as a **hygiene check**: the
+runtime no longer rejects names like `ANTHROPIC_API_KEY`, but using
+high-entropy reserved-looking names for plugin config is still poor
+practice. `cwlint doctor` reports this rule as `— deprecated`.
 
-Plugin `userConfig` option names must satisfy:
-
-- regex `^[A-Za-z][A-Za-z0-9_]*$`
-- length ≤ 128
-- not in the reserved set (`ANTHROPIC_API_KEY`, `DATABASE_URL`, `SECRET_KEY`, etc.)
+The match criteria (regex `^[A-Za-z][A-Za-z0-9_]*$`, length ≤ 128, not in
+the reserved literal set `ANTHROPIC_API_KEY`, `DATABASE_URL`, `SECRET_KEY`)
+are unchanged — only the severity and the framing of the message changed.
 
 ### Bad
 
