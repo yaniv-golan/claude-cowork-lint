@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   build-and-publish:
-    if: github.repository == 'yaniv-golan/claude-cowork-lint'
+    if: false  # Disabled during Node-native rewrite; rewritten in Part F2.
     runs-on: ubuntu-latest
     environment:
       name: pypi

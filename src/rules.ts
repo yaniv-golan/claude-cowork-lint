@@ -7,7 +7,7 @@
  */
 
 import { readFileSync } from "node:fs";
-import { basename, relative } from "node:path";
+import { relative } from "node:path";
 import type { RepoLayout } from "./discovery.js";
 import type { Finding, Severity } from "./findings.js";
 import { findTokenLine, parseFrontmatter } from "./frontmatter.js";

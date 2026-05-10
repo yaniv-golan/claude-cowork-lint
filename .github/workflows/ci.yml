@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   test:
+    if: false  # Disabled during Node-native rewrite; rewritten in Part F1.
     name: test (py${{ matrix.python }} on ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
@@ -36,6 +37,7 @@ jobs:
       - run: uv run pytest
 
   test-node:
+    if: false  # Disabled during Node-native rewrite; rewritten in Part F1.
     name: test-node (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:

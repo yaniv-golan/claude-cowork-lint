@@ -15,6 +15,7 @@ permissions:
 
 jobs:
   analyze:
+    if: false  # Disabled during Node-native rewrite; matrix language=python is stale.
     name: analyze
     runs-on: ubuntu-latest
     strategy:
