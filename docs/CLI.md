@@ -297,6 +297,13 @@ Rules:
 - The `reason="..."` field is **required**. A marker without a reason is
   silently ignored — keeps in-tree suppressions honest.
 - Multiple rule IDs may be listed, comma-separated: `CW001,CW003`.
+- A marker referencing an **unknown** rule ID will eventually be flagged
+  by CW013 (`unknown-suppression-target`, planned for v0.3) — typo'd
+  suppressions don't silently no-op forever.
+
+**Stability:** both syntaxes (hash-comment and HTML-comment) are stable
+across all v0.x releases. Changing the syntax requires a major
+`schemaVersion` bump. See the Stability policy section below.
 
 ## Stability policy
 
@@ -304,13 +311,72 @@ Rules:
 > Additions are non-breaking; removals and renames require a
 > `schemaVersion` bump.
 
-- The current `schemaVersion` is `"0.1"`.
-- The exit-code table above is frozen and append-only.
-- The `E_*` codes above are append-only. Reserved codes may begin
-  emitting at any time — that's also non-breaking.
-- Snake_case JSON keys in `check --json` (`rule_id`, `spec_version`,
-  `claude_app_version`) are stable. Other subcommands use camelCase
-  (`ruleId`, `verifiedAgainst`); the split is historical and stable.
+### What's covered by `schemaVersion`
+
+The `schemaVersion` field gates breaking changes to **every shape this
+document declares**, at any nesting depth:
+
+- The top-level envelope (`schemaVersion`, `finishedAt`, ...)
+- The per-subcommand schemas (`findings`, `rules`, `counts`, ...)
+- The embedded structures inside them (a `Finding`, a `RuleStatus`,
+  an `Anchor`, ...)
+- The `ErrorEnvelope` shape (`ok`, `code`, `message`, `hint`)
+- The error-code (`E_*`) enum and the exit-code table
+
+Removing or renaming any field — at any nesting depth — requires a
+major `schemaVersion` bump. Adding fields is additive and does not.
+
+### Append-only surfaces
+
+- The exit-code table is frozen and append-only. Reserved codes (4-9)
+  may begin emitting at any time — that's non-breaking.
+- The `E_*` codes are append-only. Reserved codes (`E_BUNDLE_NOT_FOUND`,
+  `E_RUNTIME`) may begin emitting at any time — non-breaking.
+- The rule registry (`CWxxx` IDs) is append-only. **A rule ID is never
+  reused.** Deprecation keeps the ID and demotes the rule's severity
+  (typically to `info`); the rule continues to fire so existing
+  suppression markers stay valid. CW007 is reserved indefinitely —
+  see [`docs/internal/ROADMAP.md`](internal/ROADMAP.md#cw007--intentionally-reserved-indefinitely).
+- Enum values may grow additively: `severity` (`error`/`warn`/`info`),
+  `status` (`stable`/`deprecated`/`experimental`), and `overall`
+  (`ok`/`stale`/`deprecated`) can each gain new values without bumping
+  `schemaVersion`. **See "Treat unknown enum values as defaults" under
+  AI-agent patterns** for the consumer-side rule.
+
+### Other stable surfaces
+
+- **Suppression marker syntax** (both forms — `# cwlint: ignore CWxxx
+  reason="..."` and `<!-- cwlint: ignore CWxxx reason="..." -->`) is
+  stable across all v0.x. Changing the syntax requires a major
+  `schemaVersion` bump.
+- **Contract file paths** in the npm tarball (`contracts/cowork-v<X>.json`,
+  `contracts/cowork-latest.json`) are stable. Renaming requires a
+  major `schemaVersion` bump.
+- **Snake_case vs camelCase keys.** `check --json` uses snake_case
+  (`rule_id`, `spec_version`, `claude_app_version`); other subcommands
+  use camelCase (`ruleId`, `verifiedAgainst`); the split is historical
+  and stable.
+- **`cwlint extract` output** is exempt from the `schemaVersion`
+  envelope (it's JSON-native with a different shape). Its stability is
+  documented in [`SPEC-EXTRACTION.md`](SPEC-EXTRACTION.md), not here.
+
+### Contract refresh vs `schemaVersion` bump
+
+These are independent:
+
+- A **contract refresh** (e.g., `cowork-v1.6259.1.json` →
+  `cowork-v1.6608.2.json`) bumps the runtime contract data. Patch
+  release. Does NOT bump `schemaVersion`.
+- A **`schemaVersion` bump** is about the CLI's JSON output format
+  (this document). Major release of `claude-cowork-lint`. Independent of
+  what Claude.app version the bundled contract was extracted from.
+
+### v1.0 lock
+
+When the npm package reaches `1.0.0`, `schemaVersion` bumps to `"1.0"`
+and this entire document becomes the locked public contract. Removing
+any reserved-but-unused `E_*` codes or flags must happen in the v0.x
+window — v1.0 is the last chance.
 
 ## Environment variables
 
@@ -325,6 +391,38 @@ prefix is reserved for future use; no `CWLINT_*` variables are consulted
 today.)
 
 ## AI-agent patterns
+
+### Treat unknown enum values as defaults
+
+Enum-valued fields — `severity`, `status`, `overall`, `code` — may grow
+new values additively without bumping `schemaVersion`. Consumers MUST
+handle unknown values gracefully rather than exhaustively switching:
+
+```bash
+# WRONG — silently mis-categorises a rule with a future severity value.
+case $sev in
+  error) ... ;;
+  warn)  ... ;;
+  info)  ... ;;
+esac
+
+# RIGHT — explicit default for unknown values.
+case $sev in
+  error) treat_as_error ;;
+  warn)  treat_as_warn ;;
+  info)  treat_as_info ;;
+  *)     treat_as_info ;;   # conservative: don't break on additions
+esac
+```
+
+Recommended default-for-unknown by field:
+
+| Field | Recommended unknown-value default |
+|---|---|
+| `severity` | treat as `info` (most permissive — don't break CI) |
+| `status` | treat as `stable` |
+| `overall` | treat as `stale` (force the user to look) |
+| `code` (in `ErrorEnvelope`) | exit non-zero, surface the raw `code` and `message` to the user |
 
 ### Branch on `ok === false` first
 
@@ -441,9 +539,16 @@ type Severity = "error" | "warn" | "info";
 
 The library also exports `summarise(report)`, `hasErrors(report)`, and
 `exitCode(report, { strict })` which together implement the same
-exit-code contract the CLI honours. These shapes (`Report`, `Finding`,
-`Severity`, `exitCode` return values) are stable across patch versions
-within `spec_version: "0"`.
+exit-code contract the CLI honours.
+
+**Library API stability:** the exported shapes (`Report`, `Finding`,
+`Severity`, return values of `exitCode`) are covered by the same
+`schemaVersion` policy as the CLI JSON output. Additions are
+non-breaking; removals or renames require a major `schemaVersion`
+bump. The CLI is the **primary** supported contract; the library API
+is provided for tooling that prefers in-process integration. If you
+need byte-for-byte stability guarantees that the CLI gives, prefer
+spawning the CLI and parsing `--json` output.
 
 The TypeScript-level `Finding` uses `camelCase` (`ruleId`, not `rule_id`);
 the JSON wire format uses `snake_case` to remain stable across consumers.
