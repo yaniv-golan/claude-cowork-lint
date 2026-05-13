@@ -33,18 +33,18 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import asarImport from "@electron/asar";
-import plistImport from "plist";
+import * as asarNs from "@electron/asar";
+import * as plistNs from "plist";
 
 import { diffSpecs, renderMarkdownDiff } from "../src/diff.js";
 import { runExtractors } from "../src/extractors/index.js";
 import { loadDefaultSpec } from "../src/spec.js";
 
-// NodeNext default-export interop dance: some CJS modules are exposed both as
-// the namespace itself and (when bundlers wrap them) as a `.default`. Prefer
-// the namespace; fall back to `.default` when present.
-const asar = (asarImport as unknown as { default?: typeof asarImport }).default ?? asarImport;
-const plist = (plistImport as unknown as { default?: typeof plistImport }).default ?? plistImport;
+// `@electron/asar` v4 and `plist` v5 are ESM-only with named exports — use the
+// namespace directly. Both modules also expose a `.default` re-export in some
+// bundled shapes; fall back to it when present so we tolerate either form.
+const asar = (asarNs as unknown as { default?: typeof asarNs }).default ?? asarNs;
+const plist = (plistNs as unknown as { default?: typeof plistNs }).default ?? plistNs;
 
 interface CliArgs {
   app: string;
