@@ -6,10 +6,16 @@
  * + `finishedAt`) and the new `list-rules` / `spec-info` JSON formatters.
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Finding, Report, Severity } from "../../src/findings.js";
-import { formatJson, formatSpecInfoJson, wrapEnvelope } from "../../src/output/json.js";
+import {
+  type ErrorEnvelope,
+  emitError,
+  formatJson,
+  formatSpecInfoJson,
+  wrapEnvelope,
+} from "../../src/output/json.js";
 import { formatSarif } from "../../src/output/sarif.js";
 import { formatText } from "../../src/output/text.js";
 import { loadDefaultSpec } from "../../src/spec.js";
@@ -128,5 +134,89 @@ describe("formatSarif", () => {
     };
     const ruleIds = sarif.runs[0]?.tool.driver.rules.map((r) => r.id);
     expect(ruleIds).toEqual(["CW001", "CW003"]);
+  });
+});
+
+describe("emitError", () => {
+  let stdoutSpy: ReturnType<typeof vi.spyOn>;
+  let stderrSpy: ReturnType<typeof vi.spyOn>;
+  let stdoutChunks: string[];
+  let stderrChunks: string[];
+
+  beforeEach(() => {
+    stdoutChunks = [];
+    stderrChunks = [];
+    stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+      stdoutChunks.push(String(chunk));
+      return true;
+    });
+    stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
+      stderrChunks.push(String(chunk));
+      return true;
+    });
+  });
+
+  afterEach(() => {
+    stdoutSpy.mockRestore();
+    stderrSpy.mockRestore();
+  });
+
+  const envelope: ErrorEnvelope = {
+    ok: false,
+    code: "E_PATH_NOT_FOUND",
+    message: "repo path not found: /nonexistent",
+    hint: "Pass the path to a directory containing SKILL.md.",
+  };
+
+  it("under --format json emits a single line of JSON on stdout, stderr stays empty", () => {
+    emitError(envelope, { format: "json" });
+
+    expect(stdoutChunks).toHaveLength(1);
+    expect(stderrChunks).toEqual([]);
+
+    const line = stdoutChunks[0] ?? "";
+    expect(line.endsWith("\n")).toBe(true);
+    const parsed = JSON.parse(line.trim()) as ErrorEnvelope;
+    expect(parsed).toEqual(envelope);
+    // Critical: success envelopes omit `ok`, error envelopes set it false —
+    // agents discriminate on this first.
+    expect(parsed.ok).toBe(false);
+  });
+
+  it("under --format text emits `<code>: <message>` then `hint:` on stderr, stdout stays empty", () => {
+    emitError(envelope, { format: "text" });
+
+    expect(stdoutChunks).toEqual([]);
+    expect(stderrChunks).toEqual([
+      "E_PATH_NOT_FOUND: repo path not found: /nonexistent\n",
+      "hint: Pass the path to a directory containing SKILL.md.\n",
+    ]);
+  });
+
+  it("under --format sarif also routes to stderr (same path as text)", () => {
+    emitError(envelope, { format: "sarif" });
+
+    expect(stdoutChunks).toEqual([]);
+    expect(stderrChunks[0]).toContain("E_PATH_NOT_FOUND:");
+  });
+
+  it("omits the `hint:` line entirely when no hint is present", () => {
+    const noHint: ErrorEnvelope = {
+      ok: false,
+      code: "E_USAGE",
+      message: "unknown subcommand",
+    };
+    emitError(noHint, { format: "text" });
+
+    expect(stderrChunks).toEqual(["E_USAGE: unknown subcommand\n"]);
+  });
+
+  it("JSON envelope on stdout is NOT wrapped — has no schemaVersion / finishedAt", () => {
+    emitError(envelope, { format: "json" });
+    const parsed = JSON.parse((stdoutChunks[0] ?? "").trim()) as Record<string, unknown>;
+    // Per docs/CLI.md: agents branch on ok===false first; ErrorEnvelope is the
+    // contract, not the success envelope.
+    expect("schemaVersion" in parsed).toBe(false);
+    expect("finishedAt" in parsed).toBe(false);
   });
 });
