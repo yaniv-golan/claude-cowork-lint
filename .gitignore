@@ -19,5 +19,5 @@ docs/internal/scratch/
 .env.*
 !.env.example
 
-# Note: _legacy/python/ is intentionally TRACKED — working-tree archive of the
-# pre-rewrite state. Removed in Task G7 after migration is verified.
+# Repo-internal scratch / drafts (tracked files in docs/internal/ predate this rule)
+docs/internal/
