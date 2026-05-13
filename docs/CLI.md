@@ -215,8 +215,8 @@ Flags:
 }
 ```
 
-Sorted by `ruleId`. CW007 is reserved indefinitely (see `docs/internal/ROADMAP.md`)
-and intentionally absent.
+Sorted by `ruleId`. CW007 is reserved indefinitely (see
+[`docs/RULES.md#cw007`](RULES.md#cw007)) and intentionally absent.
 
 ### `cwlint spec-info` (`--json`)
 
@@ -336,7 +336,7 @@ major `schemaVersion` bump. Adding fields is additive and does not.
   reused.** Deprecation keeps the ID and demotes the rule's severity
   (typically to `info`); the rule continues to fire so existing
   suppression markers stay valid. CW007 is reserved indefinitely —
-  see [`docs/internal/ROADMAP.md`](internal/ROADMAP.md#cw007--intentionally-reserved-indefinitely).
+  see [`docs/RULES.md#cw007`](RULES.md#cw007).
 - Enum values may grow additively: `severity` (`error`/`warn`/`info`),
   `status` (`stable`/`deprecated`/`experimental`), and `overall`
   (`ok`/`stale`/`deprecated`) can each gain new values without bumping

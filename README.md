@@ -118,7 +118,7 @@ fresh `app.asar` using AST-based behavioural anchors (`@babel/parser`); the
 `scripts/check-for-new-release.ts` watcher runs it daily on a cron and
 produces a candidate diff for human review. See
 [`docs/SPEC-EXTRACTION.md`](docs/SPEC-EXTRACTION.md) and
-[`docs/internal/SPEC.md`](docs/internal/SPEC.md) for the full design.
+[`docs/SPEC.md`](docs/SPEC.md) for the full design.
 
 ## Suppressions
 
@@ -164,8 +164,8 @@ jobs:
 
 - [`docs/RULES.md`](docs/RULES.md) — every rule (`CW001`–`CW012`, except `CW007` which is reserved), with examples and fixes
 - [`docs/CLI.md`](docs/CLI.md) — stable CLI/JSON contract for tooling integration
+- [`docs/SPEC.md`](docs/SPEC.md) — design spec (contract model, two-gate filter, rule catalog)
 - [`docs/SPEC-EXTRACTION.md`](docs/SPEC-EXTRACTION.md) — how a new Claude.app bundle becomes a contract file
-- [`docs/internal/ROADMAP.md`](docs/internal/ROADMAP.md) — what shipped in v0.1.0 and what's deferred
 
 ## Roadmap
 
@@ -184,7 +184,7 @@ roadmap (v0.1 → v1.0). All of the following are **shipped**:
 
 Future patch releases will refine these implementations rather than add new
 phases. CW007 is reserved indefinitely; see
-[`docs/internal/ROADMAP.md`](docs/internal/ROADMAP.md).
+[`docs/RULES.md#cw007`](docs/RULES.md#cw007).
 
 ## Status
 

@@ -24,9 +24,8 @@ first:
 - **One rule per module** under `src/rules/cwxxx.ts`. All rules are
   re-exported from `src/rules/index.ts`.
 - **Rule IDs are append-only.** `CW007` is **reserved indefinitely** (the
-  original framing applied the kernel-shell allowlist to the wrong surface,
-  see `docs/internal/ROADMAP.md`) — do not reuse. New rules pick the next
-  free ID.
+  original framing applied the kernel-shell allowlist to the wrong
+  surface) — do not reuse. New rules pick the next free ID.
 - **`spec_version: "0"` is locked.** The guard test
   `test/unit/schema-lock.test.ts` rejects accidental schema bumps. Bumping
   the schema is a major-version event for the project: delete the lock test
@@ -65,7 +64,7 @@ first:
 
 Per user request, the v0.1.0 release ships everything originally planned for
 v0.1 → v1.0. **Future patch releases refine the existing implementations
-rather than add new phases.** See `docs/internal/ROADMAP.md`.
+rather than add new phases.**
 
 - v0.1 — vendored static spec + checker (11 rules; CW007 reserved).
 - v0.2 — bundle extractor (`cwlint extract`); validated against
@@ -102,11 +101,8 @@ workflow can publish — none of them are code changes in this tree:
 
 ## Reference material
 
-- `docs/internal/SPEC.md` — authoritative design doc; cite a section in
-  every rule PR.
-- `docs/internal/ROADMAP.md` — phase plan and what shipped.
-- `docs/internal/RETROSPECTIVE.md` — language-choice retrospective
-  (Python prototype → Node-native rewrite).
+- `docs/SPEC.md` — authoritative design doc; cite a section in every rule
+  PR.
 - `docs/RULES.md` — public rule catalog.
 - `docs/CLI.md` — stable CLI / JSON / library contract.
 - `docs/SPEC-EXTRACTION.md` — how a new Claude.app bundle becomes a

@@ -85,9 +85,9 @@ pointer. It corresponds to:
 - In-VM CLI `2.1.138` (Bun SEA binary)
 
 The earlier `contracts/cowork-v2.1.121.json` (matched to Claude.app
-`1.6259.1`) remains in `contracts/` as a historical reference. See
-[`internal/CONTRACT-AUDIT-1.6608.2.md`](internal/CONTRACT-AUDIT-1.6608.2.md)
-for the audit that landed the refresh.
+`1.6259.1`) remains in `contracts/` as a historical reference. See the
+[Audit methodology](#audit-methodology) section below for the recipe that
+landed the v1.6608.2 refresh.
 
 The contract is reproducible end-to-end via the extractor against the
 same bundle. Each top-level field cites the desktop or CLI symbol it
@@ -202,13 +202,75 @@ drift across releases, or for users still pinned to an older
 bumps that change the JSON shape such that older files would no longer
 load.
 
-### Exemplar refresh report
+## Audit methodology
 
-`docs/internal/CONTRACT-AUDIT-1.6608.2.md` is the audit report for the
-v1.6259.1 → v1.6608.2 refresh that exercised this policy end-to-end. It
-demonstrates the expected level of evidence per rule (anchor probes,
-occurrence counts, desktop-vs-CLI bundle attribution) and is the
-template for future refreshes.
+When a contract refresh happens, the maintainer's evidence-gathering walk
+follows a recipe sharper than "run the extractor and check the diff." The
+v1.6259.1 → v1.6608.2 refresh shook out the following heuristics that
+subsequent refreshes should reuse.
+
+### Slicing the in-VM CLI bundle from the Bun-SEA binary
+
+The Bun-SEA Mach-O at `~/.local/share/claude/versions/<X>/claude` embeds
+the JS bundle behind a `// Claude Code is a Beta product` banner. The naive
+recipe (`indexOf` of a 4-byte zero run) extracts a slice truncated
+mid-token at the trailing `})` wrapper, which fails Babel parse. The
+working recipe:
+
+1. Slice from the banner offset to the next occurrence of the literal
+   `So3();})` — that's the IIFE boundary that ends the first concatenated
+   script unit. There are several `// Claude Code` banners inside the
+   Mach-O; only the boundary catches the right end.
+2. Strip the trailing `})` (no matching opening `(` survives the slice;
+   the wrapper is added by the SEA layout later).
+3. The result parses cleanly under `@babel/parser`'s script mode.
+
+`cwlint extract <bundle> --target cli` implements this slicing (see
+`src/extractors/_cli.ts`).
+
+### Per-rule anchor probes use occurrence counts, not symbol greps
+
+Each rule's evidence walk asks: "is this contract field still load-bearing
+in the new bundle?" Because minified symbols rotate every release, anchor
+probes count **string-literal** occurrences instead:
+
+- `grep -c <literal>` for line-counted hits, and
+- `grep -oE <pattern> | wc -l` for raw occurrences,
+
+against both the desktop bundle (`.vite/build/index.js`) and the extracted
+CLI bundle. The split matters because some rules anchor on desktop strings
+(CW001 / CW002 on `HOST_LOOP_EXCLUDED_BUILTIN_TOOLS`) and others on CLI
+strings (CW004 on `disable-model-invocation` and
+`skill_invoke_model_disabled`). A field with **zero** occurrences in the
+expected bundle is the signal that the rule needs re-anchoring or
+deprecation.
+
+### Desktop-vs-CLI attribution is load-bearing
+
+Some fields exist in both bundles with different semantics. The
+skill-frontmatter `disable-model-invocation` field, for instance, is read
+by the CLI runtime parser (5 kebab-form occurrences + 13 camel-form
+including the enforcement string `skill_invoke_model_disabled`) but NOT
+by the desktop's `dh(r, '<field>')` manifest-display accessor (0
+occurrences). A refresh that only probed the desktop bundle would
+incorrectly conclude the field had been removed.
+
+Anchor probes must be applied to both bundles; the
+`RULE_META.contractAnchors[]` list records which bundle each anchor lives
+in.
+
+### Evidence levels per anchor
+
+Each anchor's confidence is tracked in the rule's metadata:
+
+- *verified* — string literal extracted and counted in the bundle.
+- *documented* — referenced in Anthropic public docs or changelog.
+- *inferred* — deduced from binary-string archaeology without empirical
+  run-time confirmation.
+
+The bundled contract `contracts/cowork-v1.6608.2.json` is the canonical
+recipient of these findings — `_status_v<bundle>` and `_note_v<bundle>`
+fields hold the bundle-tagged conclusions per refresh.
 
 ## Schema lock
 

@@ -7,8 +7,7 @@
  * including ANTHROPIC_API_KEY, DATABASE_URL, etc.). Verified against
  * Claude.app 1.6608.2: the OperonSecrets IPC and the entire user-secrets
  * subsystem have been removed (zero occurrences of `OperonSecrets` /
- * `claude.operon` in the desktop bundle — see
- * `docs/internal/CONTRACT-AUDIT-1.6608.2.md`). Plugin `userConfig` is now
+ * `claude.operon` in the desktop bundle). Plugin `userConfig` is now
  * validated by the extension manifest schema, not the contract field this
  * rule reads.
  *

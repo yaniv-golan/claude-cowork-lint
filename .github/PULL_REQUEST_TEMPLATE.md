@@ -4,7 +4,7 @@
 
 ## Spec mapping
 
-<!-- Which section of `docs/internal/SPEC.md` does this address? Or: why doesn't this map to one (e.g. internal refactor, docs)? -->
+<!-- Which section of `docs/SPEC.md` does this address? Or: why doesn't this map to one (e.g. internal refactor, docs)? -->
 
 ## Test plan
 

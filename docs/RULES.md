@@ -1,6 +1,6 @@
 # Rule catalog
 
-Every rule cites the section of `docs/internal/SPEC.md` it derives from.
+Every rule cites the section of [`docs/SPEC.md`](SPEC.md) it derives from.
 Suppress any finding inline with `<!-- cwlint: ignore CWxxx reason="..." -->`
 or `# cwlint: ignore CWxxx reason="..."`.
 
@@ -12,7 +12,7 @@ or `# cwlint: ignore CWxxx reason="..."`.
 | [CW004](#cw004) | error | `disable-model-invocation: true` |
 | [CW005](#cw005) | warn  | `user-invocable: false` explicitly opts out |
 | [CW006](#cw006) | warn  | Hook command typos a known tool name |
-| ~~CW007~~ | — | *Reserved indefinitely* — see [`docs/internal/ROADMAP.md`](internal/ROADMAP.md#cw007--intentionally-reserved-indefinitely) |
+| ~~CW007~~ | — | [*Reserved indefinitely*](#cw007) |
 | [CW008](#cw008) | warn  | Sub-agent dispatch + bash fence heuristic |
 | [CW009](#cw009) | info  | MCP tool requires a server not registered locally |
 | [CW010](#cw010) | info  | Plugin `userConfig` name overlaps a legacy Operon reserved name (deprecated) |
@@ -244,6 +244,24 @@ tool name (edit distance ≤ 2). Most likely a typo (`WriteFile` → `Write`).
 
 ---
 
+## CW007
+
+**Severity:** — (reserved)
+
+**Reserved indefinitely.** The original framing for this ID applied the
+kernel-shell env-var allowlist (the `OPERON_SECRET_VARS` passthrough) to
+*hook commands* — which was the wrong surface: hook commands run in the
+host process, not the kernel shell, and the allowlist doesn't gate them.
+
+Rather than re-purpose the ID and risk silently re-validating existing
+`<!-- cwlint: ignore CW007 -->` suppression markers under a new rule with
+different semantics, `CW007` is reserved forever. New rules pick the next
+free ID.
+
+This rule never fires.
+
+---
+
 ## CW008
 
 **Severity:** warn
@@ -323,8 +341,7 @@ SKILL.md.
 **Severity:** info (deprecated)
 **Status:** The Operon kernel-secrets subsystem that originally enforced this
 was **removed in Claude.app 1.6608.2** (zero occurrences of `OperonSecrets`
-/ `claude.operon` in the desktop bundle — see
-`docs/internal/CONTRACT-AUDIT-1.6608.2.md`). Plugin `userConfig` is now
+/ `claude.operon` in the desktop bundle). Plugin `userConfig` is now
 validated by the extension manifest schema, a different system this rule
 does not currently model. The rule survives as a **hygiene check**: the
 runtime no longer rejects names like `ANTHROPIC_API_KEY`, but using

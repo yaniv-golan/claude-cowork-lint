@@ -1,9 +1,8 @@
 /**
- * Each Anthropic issue cited in `docs/internal/SPEC.md` has a fixture that
- * triggers the corresponding CW rule. Ported from
- * `_legacy/python/tests/integration/test_anthropic_issues.py` — this is the
- * v1.0 deliverable from the project ROADMAP. Adding a new issue + fixture
- * here is part of evolving the spec.
+ * Each Anthropic issue cited in `docs/SPEC.md` has a fixture that triggers
+ * the corresponding CW rule. Adding a new issue + fixture here is part of
+ * evolving the spec — the suite proves every cited upstream issue actually
+ * trips its rule.
  */
 
 import { describe, expect, it } from "vitest";

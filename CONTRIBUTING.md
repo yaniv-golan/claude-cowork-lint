@@ -19,7 +19,7 @@ your in-progress work.
 
 ## Architecture
 
-The authoritative reference is [`docs/internal/SPEC.md`](docs/internal/SPEC.md). Every
+The authoritative reference is [`docs/SPEC.md`](docs/SPEC.md). Every
 checker rule (`CW001`–`CW012`) maps to a section of that spec — PRs adding or changing
 rules **must** cite the relevant section.
 
@@ -72,8 +72,8 @@ inline rather than checking large trees into `test/fixtures/`.
 ## Adding a new rule
 
 1. Pick the next free `CWxxx` ID (current allocation in [`docs/RULES.md`](docs/RULES.md)).
-   `CW007` is **reserved indefinitely** — do not reuse it; see
-   `docs/internal/ROADMAP.md`.
+   `CW007` is **reserved indefinitely** — do not reuse it. See
+   [`docs/RULES.md#cw007`](docs/RULES.md#cw007) for the rationale.
 2. Add a row to `docs/RULES.md` with severity, description, fix guidance, and the
    spec section it derives from.
 3. Create `test/unit/rules/cwxxx.test.ts` with at least: one passing-input

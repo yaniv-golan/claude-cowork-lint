@@ -57,7 +57,6 @@ by three practical considerations: (a) skill/plugin authors live in the
 TS/JS ecosystem; (b) we parse JavaScript bundles, which is more natural with
 JS-native AST tools (`@babel/parser`); (c) the surrounding ecosystem (MCP,
 the bundled Claude plugin, `@electron/asar` for bundle extraction) is JS-first.
-See `docs/internal/RETROSPECTIVE.md` for the full reasoning.
 
 CW007 (env var not in kernel passthrough allowlist) is reserved indefinitely
 — the original framing applied the kernel-shell allowlist to the wrong surface.

@@ -13,7 +13,7 @@
   "verified_against": {
     "claude_app_version": "1.6608.2",
     "claude_cli_version": "2.1.138",
-    "_note": "Audit methodology and per-rule anchor verification recorded in docs/internal/CONTRACT-AUDIT-1.6608.2.md."
+    "_note": "Per-rule anchor verification methodology lives in docs/SPEC-EXTRACTION.md."
   },
 
   "subagent_tool_filter": {
@@ -57,7 +57,7 @@
       "spread_member_v2_1_119": "VW = [wq=Bash, D9=PowerShell]",
       "symbol_v2_1_138": "Ys_",
       "symbol_v2_1_119": "jQ_",
-      "discrepancy_resolution": "Earlier internal docs (claude-code-internals L89 / gist 303b6213b7a33167b3f98b076a5f81ad) claimed 'the async filter strips Bash'. The empirical observation that Bash isn't in a Cowork sub-agent's tool list IS correct. The mechanism explanation IS NOT — `LW8`/`Ys_` does include Bash (via the `...$2 = [Bash, PowerShell]` spread). The actual gate is **`HOST_LOOP_EXCLUDED_BUILTIN_TOOLS`** (`jie` in the desktop bundle): Cowork excludes Bash, NotebookEdit, REPL, JavaScript, and WebFetch from registered built-in tools at the host-loop layer, BEFORE the sub-agent allowlist filter runs. Replacements are registered as MCP tools — `mcp__workspace__bash`, `mcp__workspace__web_fetch`. Empirically reconfirmed May 2026: an actual Cowork sub-agent reports `mcp__workspace__bash` as a *deferred* tool (loadable via ToolSearch), while built-in `Bash` is absent. A host-CLI (CCD-mode) probe DOES show Bash in async sub-agents — because CCD mode doesn't apply the host-loop tool exclusion. The spec must distinguish these two layers; see `host_loop_tool_substitution`."
+      "discrepancy_resolution": "The 'async filter strips Bash' framing is empirically half-right and mechanistically wrong. Bash IS absent from a Cowork sub-agent's tool list, but the gate is NOT the CLI's `LW8`/`Ys_` filter (which includes Bash via the `...$2 = [Bash, PowerShell]` spread). The actual gate is **`HOST_LOOP_EXCLUDED_BUILTIN_TOOLS`** (`jie` in the desktop bundle): Cowork excludes Bash, NotebookEdit, REPL, JavaScript, and WebFetch from registered built-in tools at the host-loop layer, BEFORE the sub-agent allowlist filter runs. Replacements are registered as MCP tools — `mcp__workspace__bash`, `mcp__workspace__web_fetch`. Reconfirmed empirically: an actual Cowork sub-agent reports `mcp__workspace__bash` as a *deferred* tool (loadable via ToolSearch), while built-in `Bash` is absent. A host-CLI (CCD-mode) probe DOES show Bash in async sub-agents — because CCD mode doesn't apply the host-loop tool exclusion. The spec must distinguish these two layers; see `host_loop_tool_substitution`."
     },
     "experimental_fallback_allowlist": {
       "description": "When the async filter would reject a tool but `experimentalAgentTeams` flag is enabled (`r9() && PW()`), additional tool names pass.",
@@ -190,9 +190,9 @@
   },
 
   "user_secrets_injection": {
-    "description": "The Operon kernel-secrets subsystem (encrypted SQLite store, IPC bridge, name-validation regex). NOTE: empirically removed from the v1.6608.2 desktop bundle (zero `OperonSecrets` / `claude.operon` occurrences). Entry retained verbatim for historical reference and so CW010's anchors still resolve while it is being demoted/re-anchored — see Task B4. The successor (extension manifest `user_config`) has different validation and is not yet enumerated here.",
+    "description": "The Operon kernel-secrets subsystem (encrypted SQLite store, IPC bridge, name-validation regex). NOTE: empirically removed from the v1.6608.2 desktop bundle (zero `OperonSecrets` / `claude.operon` occurrences). Entry retained verbatim for historical reference and so CW010's anchors still resolve while the rule is in its demoted hygiene-check form. The successor (extension manifest `user_config`) has different validation and is not yet enumerated here.",
     "_status_v1_6608_2": "removed_from_desktop",
-    "_followup": "Task B4 demotes CW010 to `info` (hygiene-only retention). Replacement validation rules for the new `user_config` system (zod schemas `eqt`/`cqt`/`wqt`) will be enumerated in a future contract refresh.",
+    "_followup": "CW010 is demoted to `info` (hygiene-only retention). Replacement validation rules for the new `user_config` system (zod schemas `eqt`/`cqt`/`wqt`) will be enumerated in a future contract refresh.",
     "ipc_channels": {
       "list":   "$eipc_message$_<UUID>_$_claude.operon_$_OperonSecrets_$_list",
       "create": "$eipc_message$_<UUID>_$_claude.operon_$_OperonSecrets_$_create",
@@ -243,7 +243,7 @@
       "additional_pattern": "all env keys starting with 'OTEL_'",
       "count": 9,
       "source_offset_v2_1_138": "claude-cli-2.1.138-bundle.js:4001218",
-      "_note_on_count": "Earlier internal docs cited '5-var BG-context env-strip'. That count was for an older version; v2.1.138 has 9 explicit + OTEL_*."
+      "_note_on_count": "Older bundles had a 5-var BG-context env-strip; v2.1.138 expanded this to 9 explicit deletes plus all `OTEL_*` keys."
     },
     "list_b_terminal_strip_for_spare_worker": {
       "description": "Used by `xr3()` when spawning a BG spare worker. Strips terminal/IDE-detection env so the worker doesn't render interactive UI.",
@@ -308,7 +308,7 @@
       {
         "field": "disable-model-invocation",
         "value": true,
-        "reason": "When set to true, the CLI runtime parser (claude-code-cli@2.1.138) blocks model-driven skill invocation entirely. Enforcement site: `if (z.disableModelInvocation && !tE7(O,_)) return skill_invoke_model_disabled` in the v2.1.138 bundle; the kebab-case key is normalised to camelCase by the same parser. Round-1 audit incorrectly concluded the field was no longer recognised because the desktop's `dh(r,...)` accessor (manifest *display* layer) doesn't read it — round-3 verification corrected that: the actual frontmatter→runtime parser is in the CLI bundle, where the field has 5+ kebab-form occurrences and 13+ camel-form occurrences including the enforcement site above.",
+        "reason": "When set to true, the CLI runtime parser (claude-code-cli@2.1.138) blocks model-driven skill invocation entirely. Enforcement site: `if (z.disableModelInvocation && !tE7(O,_)) return skill_invoke_model_disabled` in the v2.1.138 bundle; the kebab-case key is normalised to camelCase by the same parser. The desktop bundle's `dh(r,...)` manifest-display accessor does NOT read this field, so the CLI bundle is the authoritative anchor — confirmed empirically by 5 kebab-form occurrences plus 13 camel-form occurrences including the enforcement site.",
         "verified_against": "claude-code-cli@2.1.138 — kebab-case `disable-model-invocation` (5 lines), camelCase `disableModelInvocation` (13 lines), enforcement string `skill_invoke_model_disabled` (1 line). Desktop bundle claude.app@1.6608.2 has 0 kebab-form occurrences, confirming the CLI is the authoritative anchor."
       }
     ],
@@ -318,16 +318,15 @@
       "reason": "Bare form depends on shell-expansion timing not guaranteed for skill subprocesses. The runtime substitutes the braced form via `H.replace(/\\$\\{CLAUDE_PLUGIN_ROOT\\}/g, () => q(_.path))`; the bare form is left as a literal and only resolves when the executing context happens to perform shell expansion (so it works in `bash -c` argv but silently fails in argv-only invocations). The same pattern applies to `${CLAUDE_PLUGIN_DATA}` (parallel substitution regex) — bare `$CLAUDE_PLUGIN_DATA` has the same silent-failure surface. CW003 flags bare forms of both env vars."
     },
     "runtime_parser_fields_v2_1_138": {
-      "_description": "All frontmatter fields the CLI bundle 2.1.138 normalises and reads at runtime, with the count of occurrences in the bundle. The CLI's `NU1` registry maps three sibling schemas (skill=`LU1`, agent=`kU1`, output-style=`VU1`); the prior round-4 count conflated all kebab-case keys into a single 'skill-frontmatter' bucket. Task C4 (see `docs/internal/FRONTMATTER-FIELDS-AUDIT.md`) corrected the schema attribution per field — `force-for-plugin` and `keep-coding-instructions` belong to `VU1` (output-style), NOT the skill schema. The `actual_schema` annotation records the correct ownership.",
+      "_description": "All frontmatter fields the CLI bundle 2.1.138 normalises and reads at runtime, with the count of occurrences in the bundle. The CLI's `NU1` registry maps three sibling schemas (skill=`LU1`, agent=`kU1`, output-style=`VU1`). The `actual_schema` annotation records which sibling schema owns each field — notably `force-for-plugin` and `keep-coding-instructions` belong to `VU1` (output-style), NOT the skill schema; `allowed-tools` is a skill-frontmatter permission grant rather than a tool-set filter equivalent to the agent's `tools:` field.",
       "fields": [
         { "name": "user-invocable", "occurrences": 15, "actual_schema": "skill", "covered_by_rule": "CW005" },
         { "name": "disable-model-invocation", "occurrences": 5, "actual_schema": "skill", "covered_by_rule": "CW004" },
-        { "name": "allowed-tools", "occurrences": 28, "actual_schema": "skill", "covered_by_rule": null, "_decision": "Task C4 — document, no rule. Field is a permission grant (folded into `alwaysAllowRules.command`), not a tool-set filter; misuse against Cowork-stripped tools is a silent no-op, not a failure. CW003 already covers the actual failure mode (skill body invokes a stripped tool)." },
-        { "name": "force-for-plugin", "occurrences": 4, "actual_schema": "output-style", "covered_by_rule": null, "_decision": "Task C4 — document, no rule. NOT a skill field; lives in the output-style schema `VU1`. Marked `@internal` and rejected with a runtime warning when set on user-authored styles. `claude-cowork-lint` does not currently lint output-styles." },
-        { "name": "keep-coding-instructions", "occurrences": 3, "actual_schema": "output-style", "covered_by_rule": null, "_decision": "Task C4 — document, no rule. NOT a skill field; lives in the output-style schema `VU1`. Documented opt-in semantics (replace vs augment default coding instructions in the system prompt); flagging would be paternalistic." }
+        { "name": "allowed-tools", "occurrences": 28, "actual_schema": "skill", "covered_by_rule": null, "_decision": "Document only, no rule. Field is a permission grant (folded into `alwaysAllowRules.command`), not a tool-set filter; misuse against Cowork-stripped tools is a silent no-op, not a failure. CW003 already covers the actual failure mode (skill body invokes a stripped tool)." },
+        { "name": "force-for-plugin", "occurrences": 4, "actual_schema": "output-style", "covered_by_rule": null, "_decision": "Document only, no rule. NOT a skill field; lives in the output-style schema `VU1`. Marked `@internal` and rejected with a runtime warning when set on user-authored styles. `claude-cowork-lint` does not currently lint output-styles." },
+        { "name": "keep-coding-instructions", "occurrences": 3, "actual_schema": "output-style", "covered_by_rule": null, "_decision": "Document only, no rule. NOT a skill field; lives in the output-style schema `VU1`. Documented opt-in semantics (replace vs augment default coding instructions in the system prompt); flagging would be paternalistic." }
       ],
-      "verified_against": "claude-code-cli@2.1.138",
-      "_audit_reference": "docs/internal/FRONTMATTER-FIELDS-AUDIT.md"
+      "verified_against": "claude-code-cli@2.1.138"
     },
     "manifest_display_fields_v1_6608_2": {
       "_description": "Fields the desktop's `dh(r, '<field>')` accessor reads. This is the manifest *display* layer (skill chooser, settings UI), distinct from the CLI runtime parser. Fields not in this list are still load-bearing at runtime if the CLI parser reads them.",

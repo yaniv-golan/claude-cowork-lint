@@ -129,12 +129,12 @@ export const RULE_META: Record<string, RuleMeta> = {
   },
   CW010: {
     ruleId: "CW010",
-    // Demoted to info + deprecated in Task B4. The contract field
-    // `user_secrets_injection.validation` still exists (A2 kept it as
-    // historical record), but the Operon kernel-secrets subsystem that
-    // enforced it was removed in Claude.app 1.6608.2. The rule lives on
-    // as a hygiene check — running it produces info-severity findings,
-    // and `doctor` reports it as `— deprecated`.
+    // Demoted to info + deprecated. The contract field
+    // `user_secrets_injection.validation` still exists (kept as historical
+    // record), but the Operon kernel-secrets subsystem that enforced it
+    // was removed in Claude.app 1.6608.2. The rule lives on as a hygiene
+    // check — running it produces info-severity findings, and `doctor`
+    // reports it as `— deprecated`.
     contractAnchors: ["user_secrets_injection.validation"],
     verifiedAgainst: "1.6608.2",
     status: "deprecated",
