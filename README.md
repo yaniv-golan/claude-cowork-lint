@@ -10,8 +10,8 @@
 
 ## Why
 
-Cowork (`@anthropic-ai/operon-core`, the VM-backed sandbox runtime) silently
-strips tools, env vars, and hook events that don't survive its filters. The
+Cowork (the VM-backed sandbox runtime inside Claude.app) silently strips
+tools, env vars, and hook events that don't survive its filters. The
 classic incident: an agent declares `tools: [Bash, ...]`, works fine in
 Claude Code, then fails silently in Cowork because the desktop excludes `Bash`
 from registered built-ins and substitutes an MCP replacement.

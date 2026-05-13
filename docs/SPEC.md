@@ -10,10 +10,9 @@ below).
 
 ## Problem
 
-Skill and plugin authors targeting Cowork
-(`@anthropic-ai/operon-core`, the VM-backed sandbox runtime that powers Cowork
-sessions) keep shipping skills with declarations that don't survive Cowork's
-runtime filters. Two real classes of incident:
+Skill and plugin authors targeting Cowork (the VM-backed sandbox runtime
+inside Claude.app that powers Cowork sessions) keep shipping skills with
+declarations that don't survive Cowork's runtime filters. Two real classes of incident:
 
 1. **Tool-allowlist mismatches.** Sub-agents declare tools (`Bash`, `Task`,
    `AskUserQuestion`) that Cowork's async-dispatch filter strips at runtime.
@@ -58,7 +57,8 @@ repo against it.
 - **Cowork** — the user-facing product label (Settings → Cowork tab,
   "Claude Cowork", `CLAUDE_CODE_SESSION_KIND="bg"`).
 - **Operon** — the internal runtime label (`OPERON_*` env vars,
-  `~/.operon/operon.db`, `@anthropic-ai/operon-core` workspace package).
+  `~/.operon/operon.db`). The runtime itself is not a separately-published
+  package — it's bundled inside Claude.app.
 - This project is named "cowork-runtime-contract-checker" because that's the
   public-facing concept. Internally, the spec describes the **Operon
   contract**. Both names should appear in user-facing copy with a one-line
@@ -213,7 +213,8 @@ file.
 1. Read `Contents/Info.plist` for `CFBundleShortVersionString`.
 2. `@electron/asar`'s programmatic API extracts `Resources/app.asar` to a
    temp dir (no `npx` boundary).
-3. Read `package.json` for `@anthropic-ai/operon-core` version.
+3. Read the bundle's internal `package.json` for the runtime build
+   version (recorded in the contract as `operon_core_version`).
 4. Apply named extractors against the desktop bundle
    (`.vite/build/{index.js, mainView.js}`) and the in-VM CLI bundle
    (extracted from the Bun-SEA binary at
@@ -457,7 +458,7 @@ project major version; never silently upgrade users across schema breaks.
 ## Reference
 
 - **Live bundles at the time of the v1.6608.2 contract refresh:**
-  Claude.app `1.6608.2` (operon-core `2.1.121`) + Claude Code CLI `2.1.138`.
+  Claude.app `1.6608.2` (runtime build `2.1.121`) + Claude Code CLI `2.1.138`.
 - **Bundle locations:**
   - Desktop: `/Applications/Claude.app/Contents/Resources/app.asar` →
     `.vite/build/{index.js, mainView.js}`.
