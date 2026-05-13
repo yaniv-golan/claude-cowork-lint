@@ -1,14 +1,14 @@
 /**
- * Tests for the spec loader + public package surface — ported from
- * `_legacy/python/tests/unit/test_smoke.py` and `test_spec_loader.py`.
+ * Tests for the spec loader + public package surface.
  */
 
-import { writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import * as cwlint from "../../src/index.js";
-import { loadDefaultSpec, loadSpec } from "../../src/spec.js";
+import { loadDefaultSpec, loadSpec, resolveDefaultSpecPath } from "../../src/spec.js";
 import { makeRepo } from "../helpers.js";
 
 const REPO_ROOT = join(__dirname, "..", "..");
@@ -81,5 +81,66 @@ describe("loadDefaultSpec", () => {
     const excluded = spec.host_loop_tool_substitution.host_loop_excluded_builtins;
     expect(excluded.names).toContain("Bash");
     expect(excluded.mcp_replacements?.Bash).toBe("mcp__workspace__bash");
+  });
+});
+
+describe("resolveDefaultSpecPath", () => {
+  let tmp: string;
+
+  beforeEach(() => {
+    tmp = mkdtempSync(join(tmpdir(), "cwlint-spec-resolve-"));
+  });
+
+  afterEach(() => {
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("prefers cowork-latest.json when present", () => {
+    const dir = join(tmp, "contracts");
+    mkdirSync(dir);
+    writeFileSync(join(dir, "cowork-latest.json"), "{}");
+    writeFileSync(join(dir, "cowork-v9.9.9.json"), "{}");
+    expect(resolveDefaultSpecPath([dir])).toBe(join(dir, "cowork-latest.json"));
+  });
+
+  it("falls back to the lexicographically-last cowork-v*.json when no symlink", () => {
+    const dir = join(tmp, "contracts");
+    mkdirSync(dir);
+    writeFileSync(join(dir, "cowork-v1.6608.2.json"), "{}");
+    writeFileSync(join(dir, "cowork-v2.1.121.json"), "{}");
+    // Note: v2 > v1 lexicographically, so v2 wins — exactly the reason
+    // cowork-latest.json is the preferred pointer in practice.
+    expect(resolveDefaultSpecPath([dir])).toBe(join(dir, "cowork-v2.1.121.json"));
+  });
+
+  it("ignores non-matching filenames in the directory", () => {
+    const dir = join(tmp, "contracts");
+    mkdirSync(dir);
+    writeFileSync(join(dir, "README.md"), "");
+    writeFileSync(join(dir, "cowork-v1.6608.2.json"), "{}");
+    writeFileSync(join(dir, "diff.md"), "");
+    writeFileSync(join(dir, "schema.json"), "{}");
+    expect(resolveDefaultSpecPath([dir])).toBe(join(dir, "cowork-v1.6608.2.json"));
+  });
+
+  it("skips unreadable / missing candidate directories and tries the next one", () => {
+    const missing = join(tmp, "does-not-exist");
+    const real = join(tmp, "contracts");
+    mkdirSync(real);
+    writeFileSync(join(real, "cowork-latest.json"), "{}");
+    expect(resolveDefaultSpecPath([missing, real])).toBe(join(real, "cowork-latest.json"));
+  });
+
+  it("throws when no candidate yields a contract", () => {
+    const emptyDir = join(tmp, "empty");
+    mkdirSync(emptyDir);
+    const missing = join(tmp, "does-not-exist");
+    expect(() => resolveDefaultSpecPath([missing, emptyDir])).toThrowError(
+      /No bundled cowork-v\*\.json contract found/,
+    );
+  });
+
+  it("throws on an empty candidate list", () => {
+    expect(() => resolveDefaultSpecPath([])).toThrowError(/No bundled cowork-v\*\.json/);
   });
 });

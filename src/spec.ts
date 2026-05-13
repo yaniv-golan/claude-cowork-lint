@@ -108,33 +108,42 @@ export function loadSpec(path: string): Spec {
   return raw as Spec;
 }
 
-export function loadDefaultSpec(): Spec {
-  // Resolve `contracts/` next to the published package, or two levels up in dev.
-  const here = dirname(fileURLToPath(import.meta.url));
-  const candidates = [
-    join(here, "..", "contracts"),
-    join(here, "..", "..", "..", "..", "contracts"),
-  ];
-  for (const dir of candidates) {
+/**
+ * Resolve the on-disk path to a bundled `cowork-v*.json` contract, searching
+ * each candidate directory in order. Prefers `cowork-latest.json` (the
+ * authoritative pointer — lexicographic sort of `cowork-vX.Y.Z.json` doesn't
+ * track release order, e.g. `v1.6608.2` sorts before `v2.1.121`); falls back
+ * to the lexicographically-last `cowork-v*.json` in the directory. Skips
+ * unreadable directories silently (catch swallows ENOENT etc. so the next
+ * candidate gets a chance). Throws when no directory yields a match.
+ *
+ * Exported so tests can exercise the fallback and not-found branches with
+ * synthetic directories without disturbing the installed contracts/ layout.
+ */
+export function resolveDefaultSpecPath(candidateDirs: readonly string[]): string {
+  for (const dir of candidateDirs) {
     try {
-      // Prefer the `cowork-latest.json` symlink/file if it exists. Lexicographic
-      // sort of `cowork-vX.Y.Z.json` filenames doesn't track release order
-      // (e.g. v1.6608.2 sorts BEFORE v2.1.121), so the symlink is the
-      // authoritative pointer to the current bundled contract.
       const latest = join(dir, "cowork-latest.json");
-      if (existsSync(latest)) {
-        return loadSpec(latest);
-      }
+      if (existsSync(latest)) return latest;
       const files = readdirSync(dir)
         .filter((f) => f.startsWith("cowork-v") && f.endsWith(".json"))
         .sort()
         .reverse();
-      if (files.length > 0) {
-        return loadSpec(join(dir, files[0]!));
-      }
+      if (files.length > 0) return join(dir, files[0] ?? "");
     } catch {
       // try next candidate
     }
   }
   throw new Error("No bundled cowork-v*.json contract found");
+}
+
+export function loadDefaultSpec(): Spec {
+  // Resolve `contracts/` next to the published package, or two levels up in dev.
+  const here = dirname(fileURLToPath(import.meta.url));
+  return loadSpec(
+    resolveDefaultSpecPath([
+      join(here, "..", "contracts"),
+      join(here, "..", "..", "..", "..", "contracts"),
+    ]),
+  );
 }
