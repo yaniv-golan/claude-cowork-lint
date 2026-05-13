@@ -31,7 +31,7 @@ jobs:
             --cli-bundle test/fixtures/bundles/synthetic-cli.js \
             --output-dir watcher-output \
             --report report.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: watcher-output
           path: |
